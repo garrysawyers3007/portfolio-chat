@@ -1,0 +1,123 @@
+/* =========================================
+   ABOUT ME / HERO SECTION
+   ========================================= */
+.hero-section-clean {
+  width: 100%;
+  min-height: 50vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--space-12) var(--space-6) 0 var(--space-6);
+  background-color: transparent;
+  text-align: center;
+  position: relative;
+}
+
+.hero-content {
+  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.hero-title {
+  font-size: 3.5rem;
+  font-weight: var(--font-bold);
+  color: var(--text);
+  margin: 0;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  min-height: 4rem;
+}
+
+.cursor {
+  display: inline-block;
+  font-weight: var(--font-light);
+  color: var(--primary);
+  animation: blink 1s step-end infinite;
+  margin-left: var(--space-1);
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+.hero-subtitle {
+  font-size: 1.5rem;
+  color: var(--text);
+  opacity: 0.9;
+  font-weight: var(--font-medium);
+  margin: 0;
+}
+
+.ai-prompt-wrapper {
+  margin-top: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.ai-prompt-text {
+  font-size: 1.1rem;
+  color: var(--muted);
+  line-height: 1.6;
+  max-width: 600px;
+  font-weight: var(--font-normal);
+}
+
+.ai-prompt-text strong {
+  color: var(--text);
+  font-weight: var(--font-semibold);
+}
+
+.arrow-indicator {
+  color: var(--accent);
+  animation: arrowFloat 3.5s var(--ease-in-out) infinite;
+  opacity: 0.6;
+  margin-top: 10px;
+}
+
+@keyframes arrowFloat {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arrow-indicator {
+    animation: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: 2.5rem;
+  }
+  .hero-subtitle {
+    font-size: 1.2rem;
+  }
+  .ai-prompt-text {
+    font-size: 1rem;
+  }
+}

@@ -1,0 +1,407 @@
+/* Section layout handled by .section utility */
+/* Container layout handled by .container utility */
+/* Title styling handled by .sectionTitle utility */
+
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: var(--space-6);
+}
+
+.project-card {
+  /* Base card styling handled by .card utility */
+  /* Layout-specific: vertical flex with gap */
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.projects-grid .project-card:first-child {
+  padding-top: var(--space-5);
+}
+/* Featured projects - subtle accent distinction */
+.project-card.featured {
+  border-width: 1px;
+  border-color: rgba(34, 211, 238, 0.35);
+  position: relative;
+}
+
+.project-card.featured::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  right: -1px;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.6) 0%, rgba(34, 211, 238, 0.15) 100%);
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+html[data-theme="light"] .project-card.featured {
+  border-color: rgba(14, 165, 233, 0.25);
+  box-shadow: 
+    0 2px 4px -1px rgba(0, 0, 0, 0.06),
+    0 4px 8px -2px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(14, 165, 233, 0.05);
+}
+
+html[data-theme="light"] .project-card.featured::before {
+  background: linear-gradient(90deg, rgba(14, 165, 233, 0.65) 0%, rgba(14, 165, 233, 0.15) 100%);
+}
+
+.project-card.featured:hover {
+  border-color: rgba(34, 211, 238, 0.5);
+}
+
+html[data-theme="light"] .project-card.featured:hover {
+  border-color: rgba(14, 165, 233, 0.35);
+}
+
+/* Desktop: featured projects span wider on large screens */
+@media (min-width: 1200px) {
+  .projects-grid {
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  }
+  
+  .project-card.featured {
+    grid-column: span 2;
+  }
+}
+
+/* Subtle hierarchy: emphasize recent/ML projects */
+.project-card:nth-child(-n+3) {
+  box-shadow: var(--shadow);
+}
+
+.project-card:nth-child(-n+3) .project-title {
+  font-weight: var(--font-semibold);
+}
+
+/* ===== TOP ROW: Title + Date ===== */
+.project-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.project-title {
+  font-size: 1.1rem;
+  font-weight: var(--font-medium);
+  color: var(--text);
+  line-height: 1.3;
+  margin: 0;
+  flex: 1;
+}
+
+.project-date {
+  font-size: 0.7rem;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-weight: var(--font-normal);
+  white-space: nowrap;
+  opacity: 0.65;
+  letter-spacing: 0.01em;
+}
+
+/* Dark mode: Slightly increase date contrast */
+html[data-theme="dark"] .project-date {
+  opacity: 0.7;
+}
+
+/* Light mode: Reduce date contrast further */
+html[data-theme="light"] .project-date {
+  opacity: 0.6;
+  color: rgba(71, 85, 105, 0.75);
+}
+
+/* ===== HIGHLIGHT: One-line impact summary ===== */
+.project-highlight {
+  font-size: 0.9rem;
+  color: var(--text);
+  font-weight: var(--font-medium);
+  line-height: 1.4;
+  margin: 0;
+  opacity: 0.85;
+  font-style: italic;
+}
+
+/* ===== BODY: Clamped Description ===== */
+.project-description-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.project-description {
+  font-size: 0.95rem;
+  color: var(--text);
+  line-height: 1.6;
+  margin: 0;
+  opacity: 0.9;
+  
+  /* Line clamp to 2 lines by default */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: all var(--transition-base) var(--ease-in-out);
+}
+
+.project-description.expanded {
+  -webkit-line-clamp: unset;
+  display: block;
+}
+
+.expand-btn {
+  align-self: flex-start;
+  background: none;
+  border: 1px solid transparent;
+  color: var(--primary);
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  padding: var(--space-2) var(--space-2);
+  opacity: 0.75;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  transition: all var(--transition-base) var(--ease-in-out);
+}
+
+.expand-icon {
+  transition: transform var(--transition-base) var(--ease-in-out);
+  flex-shrink: 0;
+}
+
+.expand-btn.expanded .expand-icon {
+  transform: rotate(180deg);
+}
+
+.expand-btn:hover {
+  opacity: 1;
+  background: rgba(34, 211, 238, 0.08);
+  border-color: rgba(34, 211, 238, 0.2);
+}
+
+.expand-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  opacity: 1;
+  border-color: var(--primary);
+}
+
+html[data-theme="light"] .expand-btn:hover {
+  background: rgba(14, 165, 233, 0.06);
+  border-color: rgba(14, 165, 233, 0.2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .expand-icon {
+    transition: none;
+  }
+  
+  .expand-btn.expanded .expand-icon {
+    transform: none;
+  }
+}
+
+/* ===== TECH STACK: Chips ===== */
+.project-tech {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: auto;
+}
+
+/* Override chip styles for tech tags - reduced visual weight */
+.project-tech .chip {
+  font-size: 0.7rem;
+  padding: var(--space-1) var(--space-2);
+  opacity: 0.7;
+  font-weight: var(--font-normal);
+  letter-spacing: 0.02em;
+}
+
+.project-tech .chip:hover {
+  opacity: 0.9;
+}
+
+/* Dark mode: Increase tech tag contrast for readability */
+html[data-theme="dark"] .project-tech .chip {
+  opacity: 0.8;
+  background: rgba(30, 41, 59, 0.5);
+  border-color: rgba(34, 211, 238, 0.2);
+}
+
+html[data-theme="dark"] .project-tech .chip:hover {
+  opacity: 0.95;
+  border-color: rgba(34, 211, 238, 0.35);
+}
+
+/* ===== ACTIONS ROW: Clear call-to-action ===== */
+.project-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  margin-top: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+
+.project-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-size: 0.85rem;
+  font-family: var(--font-ui);
+  font-weight: var(--font-medium);
+  color: var(--text);
+  text-decoration: none;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  cursor: pointer;
+  transition: all var(--transition-base) var(--ease-in-out);
+  min-height: 44px;
+}
+
+.project-action-btn svg {
+  width: 18px;
+  height: 18px;
+  transition: transform var(--transition-base) var(--ease-in-out);
+}
+
+.project-action-btn:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: rgba(34, 211, 238, 0.08);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px -2px rgba(34, 211, 238, 0.2);
+}
+
+.project-action-btn:hover svg {
+  transform: translateX(2px);
+}
+
+.project-action-btn:active {
+  transform: translateY(0);
+}
+
+.project-action-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-color: var(--primary);
+}
+
+/* Light theme adjustments */
+html[data-theme="light"] .project-action-btn {
+  background: linear-gradient(135deg, #FAFBFC 0%, #F5F7FB 100%);
+  border-color: rgba(14, 165, 233, 0.15);
+}
+
+html[data-theme="light"] .project-action-btn:hover {
+  background: rgba(14, 165, 233, 0.08);
+  box-shadow: 0 4px 8px -2px rgba(14, 165, 233, 0.15);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .project-action-btn:hover {
+    transform: none;
+  }
+  .project-action-btn:hover svg {
+    transform: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .projects-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .project-card {
+    padding: var(--space-5);
+  }
+}
+
+/* ===== THEME-SPECIFIC CARD STYLING ===== */
+
+/* Light theme: Emphasize elevation with shadows and gradients */
+html[data-theme="light"] .project-card {
+  background: linear-gradient(135deg, #FFFFFF 0%, #FCFDFE 100%);
+  border-color: rgba(14, 165, 233, 0.12);
+  box-shadow: 
+    0 2px 4px -1px rgba(0, 0, 0, 0.06),
+    0 4px 8px -2px rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme="light"] .project-card:hover {
+  box-shadow: 
+    0 4px 12px -2px rgba(0, 0, 0, 0.1),
+    0 8px 16px -4px rgba(0, 0, 0, 0.08),
+    0 -2px 8px -2px rgba(14, 165, 233, 0.12);
+  border-color: rgba(14, 165, 233, 0.25);
+}
+
+html[data-theme="light"] .project-card:nth-child(-n+3) {
+  box-shadow: 
+    0 3px 6px -1px rgba(0, 0, 0, 0.08),
+    0 6px 12px -2px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(14, 165, 233, 0.06);
+}
+
+/* Dark theme: Emphasize contrast with borders and backgrounds */
+html[data-theme="dark"] .project-card {
+  background: var(--surface);
+  border: 1px solid rgba(34, 211, 238, 0.15);
+}
+
+html[data-theme="dark"] .project-card:hover {
+  border-color: rgba(34, 211, 238, 0.35);
+  background: rgba(15, 23, 42, 0.8);
+}
+
+html[data-theme="dark"] .project-card:nth-child(-n+3) {
+  border-color: rgba(34, 211, 238, 0.25);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.6) 100%);
+}
+
+/* Light theme: Enhance text hierarchy with subtle opacity adjustments */
+html[data-theme="light"] .project-title {
+  color: #0F172A;
+}
+
+html[data-theme="light"] .project-highlight {
+  color: rgba(15, 23, 42, 0.75);
+}
+
+html[data-theme="light"] .project-description {
+  color: rgba(15, 23, 42, 0.85);
+}
+
+html[data-theme="light"] .project-date {
+  color: rgba(71, 85, 105, 0.7);
+}
+
+/* Dark theme: Maintain existing contrast-based hierarchy */
+html[data-theme="dark"] .project-title {
+  color: var(--text);
+}
+
+html[data-theme="dark"] .project-highlight {
+  opacity: 0.85;
+}
+
+html[data-theme="dark"] .project-description {
+  opacity: 0.9;
+}
+
+html[data-theme="dark"] .project-date {
+  opacity: 0.85;
+}

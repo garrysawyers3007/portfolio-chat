@@ -1,0 +1,161 @@
+/* Section-specific overrides (if needed) */
+.education-section {
+  /* Section layout handled by .section utility */
+}
+
+/* Container layout handled by .container utility */
+/* Title styling handled by .sectionTitle utility */
+
+.education-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* Slightly reduce top padding on the first card for tighter resume-style spacing */
+.education-list .education-card:first-child {
+  padding-top: var(--space-5);
+}
+
+.education-card {
+  /* Base card styling handled by .card utility */
+  /* Layout-specific: horizontal flex with gap */
+  align-items: flex-start;
+  gap: var(--space-6);
+  /* Consistent card padding across sections */
+  padding: var(--space-6);
+}
+
+/* No extra bottom divider; rely on spacing and layout for separation */
+
+.edu-logo-wrapper {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(30, 41, 55, 0.25);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  border: 1px solid rgba(31, 41, 55, 0.08);
+}
+
+html[data-theme="light"] .edu-logo-wrapper {
+  background-color: rgba(14, 165, 233, 0.04);
+  border-color: rgba(14, 165, 233, 0.08);
+}
+
+.edu-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0.75;
+}
+
+.edu-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.edu-school {
+  font-size: 1.05rem;
+  font-weight: var(--font-semibold);
+  color: var(--text);
+  margin: 0;
+}
+
+.edu-degree {
+  font-size: 0.95rem;
+  color: var(--muted);
+  font-weight: var(--font-normal);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Inline metadata row - GPA, separator, date as single flex group */
+.edu-metadata-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  flex-wrap: wrap;
+  padding: var(--space-3) 0;
+  border-top: 1px solid rgba(34, 211, 238, 0.06);
+}
+
+html[data-theme="light"] .edu-metadata-row {
+  border-top-color: rgba(14, 165, 233, 0.12);
+}
+
+/* GPA label (inline) */
+.edu-gpa-label {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: var(--font-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: var(--font-mono);
+  opacity: 0.6;
+}
+
+/* GPA value chip (inline) */
+.edu-gpa-value {
+  background-color: rgba(34, 211, 238, 0.15);
+  color: var(--muted);
+  padding: var(--space-1) var(--space-2);
+  border-radius: 3px;
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  font-size: 0.75rem;
+  font-weight: var(--font-medium);
+  font-family: var(--font-mono);
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+html[data-theme="light"] .edu-gpa-value {
+  background-color: rgba(14, 165, 233, 0.12);
+  border-color: rgba(14, 165, 233, 0.3);
+  color: #0A6FAA;
+}
+
+/* Dot separator between items */
+.edu-separator {
+  color: var(--primary);
+  opacity: 0.25;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+html[data-theme="light"] .edu-separator {
+  color: #0EA5E9;
+  opacity: 0.45;
+}
+
+/* Date (inline) */
+.edu-date {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-family: var(--font-mono);
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+
+
+/* Mobile Responsiveness */
+@media (max-width: 600px) {
+  .education-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+  
+  .edu-logo-wrapper {
+    width: 52px;
+    height: 52px;
+  }
+}
+
+/* Light theme handled by design tokens */

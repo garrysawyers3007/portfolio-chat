@@ -1,0 +1,301 @@
+/* Section layout handled by .section utility */
+/* Container layout handled by .container utility */
+/* Title styling handled by .sectionTitle utility */
+
+/* Timeline list */
+.experience-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  position: relative;
+}
+
+.experience-list::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+  pointer-events: none;
+}
+
+.experience-item {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  column-gap: var(--space-4);
+  align-items: start;
+}
+
+.timeline-col {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.timeline-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--primary);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.12);
+  margin-top: var(--space-3);
+}
+
+.experience-item:first-child .timeline-dot {
+  box-shadow: 
+    0 0 0 2px rgba(34, 211, 238, 0.3),
+    0 0 6px rgba(34, 211, 238, 0.18);
+  background: var(--primary);
+}
+
+/* Current role: Subtle card enhancement */
+.experience-item.current .experience-card {
+  border-color: rgba(34, 211, 238, 0.25);
+  background: rgba(34, 211, 238, 0.03);
+}
+
+html[data-theme="light"] .experience-item.current .experience-card {
+  border-color: rgba(14, 165, 233, 0.15);
+  background: rgba(14, 165, 233, 0.02);
+}
+
+/* Current badge */
+.exp-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.current-badge {
+  font-size: 0.65rem;
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--primary);
+  background: rgba(34, 211, 238, 0.1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: 2px;
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  white-space: nowrap;
+}
+
+html[data-theme="light"] .current-badge {
+  color: #0EA5E9;
+  background: rgba(14, 165, 233, 0.08);
+  border-color: rgba(14, 165, 233, 0.25);
+}
+
+.experience-card {
+  /* Base card styling handled by .card utility */
+  /* Layout-specific: horizontal flex with gap */
+  align-items: flex-start;
+  gap: var(--space-6);
+}
+
+/* Slightly reduce top padding on the first card for tighter resume-style spacing */
+.experience-list .experience-item:first-child .card.experience-card {
+  padding-top: var(--space-5);
+}
+
+.exp-logo-container {
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #FFFFFF;
+  border-radius: var(--radius);
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+}
+
+.exp-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.exp-logo-fallback {
+  width: 100%;
+  height: 100%;
+  background-color: var(--primary);
+  color: var(--surface);
+  font-size: 1.5rem;
+  font-weight: var(--font-semibold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+}
+
+.exp-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.exp-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.exp-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.exp-company {
+  font-size: 1.05rem;
+  font-weight: var(--font-semibold);
+  color: var(--text);
+  margin: 0;
+}
+
+.exp-role {
+  font-size: 0.98rem;
+  font-weight: var(--font-medium);
+  color: var(--muted);
+  margin: 0;
+}
+
+.exp-date {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-weight: var(--font-medium);
+  white-space: nowrap;
+}
+
+.exp-bullets {
+  margin: 0;
+  padding-left: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.exp-bullets li {
+  margin: 0;
+}
+
+.exp-description {
+  margin: 0;
+  color: var(--text);
+  opacity: 0.9;
+  line-height: 1.6;
+}
+
+.exp-tech-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: auto;
+}
+
+/* Reduce tech tag visual prominence, read as secondary metadata */
+.exp-tech-stack .chip {
+  font-size: 0.7rem;
+  padding: var(--space-1) var(--space-2);
+  opacity: 0.7;
+  font-weight: var(--font-normal);
+  letter-spacing: 0.02em;
+  transition: opacity var(--transition-base);
+}
+
+.exp-tech-stack .chip:hover {
+  opacity: 0.9;
+}
+
+/* Dark mode: Boost contrast slightly for readability */
+html[data-theme="dark"] .exp-tech-stack .chip {
+  opacity: 0.8;
+  background: rgba(30, 41, 59, 0.5);
+  border-color: rgba(34, 211, 238, 0.2);
+}
+
+html[data-theme="dark"] .exp-tech-stack .chip:hover {
+  opacity: 0.95;
+  border-color: rgba(34, 211, 238, 0.35);
+}
+
+/* Light mode: Maintain lighter opacity for metadata feel */
+html[data-theme="light"] .exp-tech-stack .chip {
+  opacity: 0.7;
+}
+
+html[data-theme="light"] .exp-tech-stack .chip:hover {
+  opacity: 0.85;
+}
+
+/* Chips use shared .chip styles from index.css */
+
+@media (max-width: 900px) {
+  .experience-item {
+    grid-template-columns: 22px 1fr;
+    column-gap: var(--space-3);
+  }
+
+  .exp-logo-container {
+    width: 56px;
+    height: 56px;
+  }
+}
+
+@media (max-width: 700px) {
+  .experience-list::before {
+    display: none;
+  }
+
+  .timeline-col {
+    display: none;
+  }
+
+  .experience-item {
+    grid-template-columns: 1fr;
+  }
+
+  .experience-card {
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+}
+
+html[data-theme="light"] .experience-card:first-child {
+  border-color: #CBD5E1;
+  border-left-width: 2px;
+}
+
+html[data-theme="light"] .experience-list::before {
+  background: rgba(203, 213, 225, 0.5);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .experience-card {
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+  }
+  
+  :root:not([data-theme="dark"]) .experience-card:hover {
+    border-color: #CBD5E1;
+  }
+  
+  :root:not([data-theme="dark"]) .experience-card:first-child {
+    border-color: #CBD5E1;
+    border-left-width: 2px;
+  }
+  
+  :root:not([data-theme="dark"]) .experience-list::before {
+    background: rgba(203, 213, 225, 0.5);
+  }
+}

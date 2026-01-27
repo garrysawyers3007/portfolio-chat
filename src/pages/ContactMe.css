@@ -1,0 +1,409 @@
+/* Section-specific overrides */
+.contact-section {
+  /* Section layout handled by .section utility */
+}
+
+/* Container layout handled by .container utility */
+
+/* Override title styling for smaller contact heading (spacing aligns with global underline) */
+.contact-section .sectionTitle {
+  font-size: 1.5rem;
+  font-weight: var(--font-medium);
+  margin-bottom: var(--space-1);
+}
+
+/* Contact section uses global underline via .sectionHeaderGroup; no custom divider styles */
+
+/* =========================================
+   CONTACT PANEL ANIMATIONS
+   ========================================= */
+
+/* Subtle scanline animation - moving top to bottom */
+@keyframes scanlineFlow {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 8px;
+  }
+}
+
+.contact-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Slightly reduce top padding on the first card (contact panel) for tighter spacing */
+.contact-panel {
+  padding-top: var(--space-5);
+  padding-bottom: var(--space-6);
+}
+
+/* Faint animated scanline overlay */
+.contact-panel::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(34, 211, 238, 0.02) 0px,
+    rgba(34, 211, 238, 0.02) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+  background-position: 0 0;
+  background-size: 100% 8px;
+  animation: scanlineFlow 6s linear infinite;
+  opacity: 0.4;
+  z-index: 1;
+}
+
+/* Light theme scanline - darker, more subtle */
+html[data-theme="light"] .contact-panel::after {
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(14, 165, 233, 0.015) 0px,
+    rgba(14, 165, 233, 0.015) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+}
+
+/* Ensure content appears above the scanline overlay */
+.contact-panel > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Disable animation when reduced motion is preferred */
+@media (prefers-reduced-motion: reduce) {
+  .contact-panel::after {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+.contact-pitch {
+  margin: 0;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.contact-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.email-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.email-row-clean {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 2px 10px -10px rgba(0, 0, 0, 0.5);
+  position: relative;
+  cursor: pointer;
+  transition: background-color var(--transition-base) var(--ease-in-out),
+              border-color var(--transition-base) var(--ease-in-out),
+              box-shadow var(--transition-base) var(--ease-in-out),
+              transform var(--transition-base) var(--ease-in-out);
+}
+
+html[data-theme="light"] .email-row-clean {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+}
+
+.email-row-clean:hover {
+  background: rgba(34, 211, 238, 0.04);
+  border-color: rgba(34, 211, 238, 0.35);
+  box-shadow: 0 10px 30px -18px rgba(34, 211, 238, 0.35);
+  transform: translateY(-1px);
+}
+
+.contact-label-muted {
+  font-size: 0.9rem;
+  font-weight: var(--font-medium);
+  color: var(--muted);
+}
+
+.email-row-clean:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  background: rgba(34, 211, 238, 0.06);
+  border-color: var(--primary);
+}
+
+.email-row-clean.copied {
+  border-color: rgba(34, 211, 238, 0.5);
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.18);
+}
+
+.email-text {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  color: var(--text);
+  font-weight: var(--font-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.copy-icon-btn {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color var(--transition-base) var(--ease-in-out),
+              border-color var(--transition-base) var(--ease-in-out),
+              background-color var(--transition-base) var(--ease-in-out),
+              box-shadow var(--transition-base) var(--ease-in-out),
+              transform var(--transition-base) var(--ease-in-out);
+}
+
+.copy-icon-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+
+.copy-icon-btn:hover {
+  color: var(--text);
+  background: rgba(34, 211, 238, 0.08);
+  border-color: rgba(34, 211, 238, 0.5);
+  box-shadow: 0 4px 14px -10px rgba(34, 211, 238, 0.4);
+  transform: translateY(-1px);
+}
+
+.copy-icon-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  color: var(--text);
+  border-color: var(--primary);
+}
+
+.copy-icon-btn.copied {
+  color: var(--primary);
+  background: rgba(34, 211, 238, 0.1);
+  border-color: rgba(34, 211, 238, 0.6);
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.25);
+}
+
+.copy-feedback {
+  position: absolute;
+  right: calc(40px + var(--space-4));
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(34, 211, 238, 0.12);
+  border: 1px solid rgba(34, 211, 238, 0.4);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: var(--font-medium);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-base) var(--ease-in-out),
+              transform var(--transition-base) var(--ease-in-out);
+}
+
+.copy-feedback.visible {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .copy-icon-btn {
+    transition: color var(--transition-base) var(--ease-in-out),
+                border-color var(--transition-base) var(--ease-in-out),
+                background-color var(--transition-base) var(--ease-in-out),
+                box-shadow var(--transition-base) var(--ease-in-out);
+  }
+  .copy-icon-btn:hover {
+    transform: none;
+  }
+
+  .email-row-clean {
+    transition: background-color var(--transition-base) var(--ease-in-out),
+                border-color var(--transition-base) var(--ease-in-out),
+                box-shadow var(--transition-base) var(--ease-in-out);
+  }
+  .email-row-clean:hover {
+    transform: none;
+  }
+}
+
+.social-row {
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.contact-label {
+  font-size: 0.95rem;
+  font-weight: var(--font-medium);
+  color: var(--text);
+}
+
+.social-icons-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.icon-button {
+  width: 48px;
+  height: 48px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  position: relative;
+  transition: color var(--transition-base) var(--ease-in-out),
+              border-color var(--transition-base) var(--ease-in-out),
+              background-color var(--transition-base) var(--ease-in-out),
+              box-shadow var(--transition-base) var(--ease-in-out),
+              transform var(--transition-base) var(--ease-in-out);
+  box-shadow: 0 4px 12px -8px rgba(0, 0, 0, 0.35);
+}
+
+.icon-button svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+
+.icon-button:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: rgba(34, 211, 238, 0.08);
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.3),
+              0 10px 24px -10px rgba(34, 211, 238, 0.45);
+  transform: scale(1.06);
+}
+
+.icon-button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  color: var(--primary);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.25);
+}
+
+.icon-button:focus-visible:hover {
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.25),
+              0 0 0 2px rgba(34, 211, 238, 0.3) inset;
+}
+
+/* Accessible tooltip styling (enhanced with title attribute) */
+.icon-button::after {
+  content: attr(title);
+  position: absolute;
+  bottom: -36px;
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  opacity: 0;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
+  white-space: nowrap;
+  font-size: 0.8rem;
+  font-weight: var(--font-medium);
+  color: var(--text);
+  pointer-events: none;
+  transition: opacity var(--transition-base) var(--ease-in-out),
+              transform var(--transition-base) var(--ease-in-out);
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.icon-button:hover::after,
+.icon-button:focus-visible::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Light theme icon button hover */
+html[data-theme="light"] .icon-button:hover {
+  background: rgba(14, 165, 233, 0.08);
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2),
+              0 10px 24px -10px rgba(14, 165, 233, 0.3);
+}
+
+/* Light theme tooltip */
+html[data-theme="light"] .icon-button::after {
+  background: var(--bg2);
+  border-color: var(--border);
+  color: var(--text);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+/* Reduced motion support - no scale or tooltip animation */
+@media (prefers-reduced-motion: reduce) {
+  .icon-button {
+    transition: color var(--transition-base) var(--ease-in-out),
+                border-color var(--transition-base) var(--ease-in-out),
+                background-color var(--transition-base) var(--ease-in-out),
+                box-shadow var(--transition-base) var(--ease-in-out);
+  }
+  .icon-button:hover {
+    transform: none;
+  }
+  .icon-button::after {
+    transition: opacity var(--transition-base) var(--ease-in-out);
+    transform: none;
+  }
+  .icon-button:hover::after,
+  .icon-button:focus-visible::after {
+    transform: none;
+  }
+}
+
+/* Mobile Stack */
+@media (max-width: 520px) {
+  .contact-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .email-row {
+    width: 100%;
+  }
+}
