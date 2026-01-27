@@ -10,6 +10,7 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^13.5.0",
+    "@vercel/analytics": "^1.6.1",
     "langchain": "^1.2.11",
     "openai": "^4.104.0",
     "react": "^19.2.3",
