@@ -12,8 +12,8 @@
 /build
 
 # data and RAG index
-/public/data/*
-/public/rag/*
+# /public/data/*
+# /public/rag/*
 
 # misc
 .DS_Store

@@ -1,0 +1,225 @@
+{
+    "basic_info": {
+      "description_header": "Hi",
+      "description": "I'm Gauransh Sawhney, a full-stack software engineer and graduate student at Virginia Tech (MS Computer Engineering). I specialize in building scalable backend services, AI/ML solutions, and interactive frontend applications. With experience across Python, Java, React, JavaScript and modern DevOps practices, I've shipped production systems serving 100K+ users and trained deep learning models for real-world applications. I'm passionate about solving complex technical problems and collaborating with cross-functional teams.",
+      "section_name": {
+        "about": "About me",
+        "projects": "Projects",
+        "skills": "Skills",
+        "experience": "Experience"
+      }
+    },
+    "projects": [
+      {
+      "title": "Vision-Controlled Flappy Bird",
+      "highlight": "Real-time gesture control via computer vision",
+      "featured": true,
+      "date": "Jul 2025",
+      "description": "Real-time computer vision system mapping hand motion to game control via webcam (MATLAB). Implemented HSV segmentation, binary masking, frame-to-frame transitions for flapping gesture detection under varying lighting. Integrated perception, UI, and game logic into real-time loop.",
+      "technologies": ["MATLAB", "Computer Vision", "Image Processing"],
+      "url": "https://github.com/garrysawyers3007/Vision_Bird", 
+      "repo_name": "Vision_Bird"
+      },
+      {
+        "title": "Gray to Glory: Analysis of Image Coloration Models",
+        "highlight": "Deep learning model comparison achieving 5% MAE improvement",
+        "featured": true,
+        "date": "Sep 2024 - Dec 2024",
+        "description": "Automatic image colorization via deep learning (CNN, U-Net, ResNet 18, GANs). Improved color fidelity: MAE 0.0848→0.0807, LPIPS 0.132→0.148.",
+        "technologies": ["Computer Vision", "Python", "PyTorch", "Deep Learning"],
+        "url": "https://github.com/garrysawyers3007/Image-Colouration",
+        "repo_name": "Image-Colouration"
+      },
+      {
+        "title": "Hierarchical Modelling for Sparse Labelled Data",
+        "highlight": "RoBERTa NLP classifier achieving 99% accuracy on sparse data",
+        "date": "Aug 2021 - Dec 2021",
+        "description": "RoBERTa model classifying Not-for-Profit tweets (99% accuracy) and Call-for-Grants tweets (94% accuracy). Data augmentation via similarity metrics.",
+        "technologies": ["Deep Learning", "Python", "PyTorch", "NLP"],
+        "url": "https://github.com/garrysawyers3007/Twitter-Tweets-Classsification",
+        "repo_name": "Twitter-Tweets-Classsification"
+      },
+      {
+        "title": "Semantic Image Segmentation Challenge",
+        "highlight": "Satellite image vegetation extraction using U-Net + ResNet34",
+        "date": "Mar 2021 - Apr 2021",
+        "description": "U-Net with ResNet34 encoder extracting vegetation cover from satellite images (fastai). Preprocessed multi-class masks to binary segmentations. IoU 0.404.",
+        "technologies": ["Computer Vision", "Deep Learning", "Python", "PyTorch"],
+        "url": "https://github.com/garrysawyers3007/Kharagpur-DS-Hackathon",
+        "repo_name": "Kharagpur-DS-Hackathon"
+      },
+      {
+        "title": "DaanCorona: Voucher Platform",
+        "highlight": "Full-stack donation platform supporting local businesses during COVID",
+        "date": "Mar 2020 - Jan 2021",
+        "description": "Voucher platform for donations to small businesses during COVID (React web, Android app, Django backend). Redeemable post-lockdown.",
+        "technologies": ["Android Development", "Java", "ReactJS", "Django"],
+        "url": "https://github.com/garrysawyers3007/DaanCorona",
+        "repo_name": "DaanCorona"
+      },
+      {
+        "title": "BOSM Roulette",
+        "highlight": "Sports betting app with 500+ downloads for college fest",
+        "date": "Aug 2019 - Sep 2019",
+        "description": "Sports betting platform for college fest matches (Android, Firebase). 500+ downloads.",
+        "technologies": ["Android Development", "Java", "Firebase"],
+        "url": "https://github.com/garrysawyers3007/BOSM-Roulette-2019",
+        "repo_name": "BOSM-Roulette-2019"
+      }
+    ],
+    "experience": [
+    {
+      "company": "Commonwealth Cyber Initiative",
+      "title": "Graduate Research Assistant",
+      "years": "Jan 2025 - Present",
+      "description": "Spearheading research on 5G/6G Wireless Security and AI-driven frameworks. Working on performance analysis of DMRS Density in 5G NR across mobility and numerologies using Sionna and Python.",
+      "logoUrl": "/assets/CCI.png", 
+      "technologies": ["5G", "Sionna", "Python", "Deep Learning", "PyTorch"]
+    },
+    {
+      "company": "MathWorks",
+      "title": "Software Engineering Intern (EDG)",
+      "years": "June 2025 - Aug 2025",
+      "description": "Built interactive dashboard using JavaScript and UI Builder used by 20+ IAT teams to monitor agent performance, SLA compliance, and incident resolution trends. Integrated data from incidents, surveys, and service catalogs into a unified source of truth.",
+      "logoUrl": "/assets/Mathworks.png",
+      "technologies": ["JavaScript", "UI Builder", "Data Integration", "Dashboarding"]
+    },
+    {
+      "company": "ServiceNow",
+      "title": "Associate Software Engineer",
+      "years": "July 2022 - Aug 2024",
+      "description": "Owned and shipped a production backend service using Ruby and REST API to track last-access timestamps for 100K+ enterprise users. Queried and aggregated high-volume time-series data from RocksDB-backed database using SQL for real-time performance dashboards.",
+      "logoUrl": "/assets/ServiceNow.png",
+      "technologies": ["Ruby", "React", "PostgreSQL", "RocksDB", "Java"]
+    },
+    {
+      "company": "Vision & AI Lab (VAL), IISc Bangalore",
+      "title": "Research Intern",
+      "years": "Jan 2022 - May 2022",
+      "description": "Worked with Vision Transformers for Unsupervised Domain Adaptation (UDA) on the Office-Home dataset. Trained models on augmented images with feature mixup in intermediate layers, achieving a 1% improvement over existing baselines.",
+      "logoUrl": "/assets/VAL.png",
+      "technologies": ["PyTorch", "Vision Transformers", "Computer Vision", "Python"]
+    },
+    {
+      "company": "Schmooze",
+      "title": "Software Engineering Intern",
+      "years": "Oct 2021 - May 2022",
+      "description": "Developed backend microservices using Flask and PyTorch. Worked on implementing gRPC for efficient service-to-service communication and deployed models for real-time inference.",
+      "logoUrl": "/assets/Schmooze.png",
+      "technologies": ["Flask", "PyTorch", "gRPC", "ElasticSearch", "Celery"]
+    },
+    {
+      "company": "Freecharge",
+      "title": "Software Engineering Intern",
+      "years": "May 2021 - July 2021",
+      "description": "Contributed to the Android codebase using Kotlin. Implemented new UI/UX designs and optimized mobile app performance for better user engagement.",
+      "logoUrl": "/assets/Freecharge.png",
+      "technologies": ["Kotlin", "Android Studio", "Mobile Dev"]
+    },
+    {
+      "company": "Smart I Electronic Systems Pvt Ltd",
+      "title": "Summer Intern",
+      "years": "May 2020 - Jun 2020",
+      "description": "Developed an object detection API using YOLO v3 model built with Tensorflow and Keras to detect pedestrians in an image and return details of detected objects. The backend for server was built using Flask.",
+      "logoUrl": "/assets/SIS.png",
+      "technologies": ["Python", "Flask", "Computer Vision", "Deep Learning"]
+    }
+  ],
+    "education": [
+    {
+      "school": "Virginia Tech",
+      "degree": "Master of Science in Computer Engineering",
+      "gpa": "3.95",
+      "date": "August 2024 - May 2026",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/commons/6/60/Virginia_Tech_Hokies_logo.svg"
+    },
+    {
+      "school": "Birla Institute of Technology and Science, Pilani",
+      "degree": "Bachelor of Engineering in Electical and Electronics Engineering",
+      "gpa": "3.8",
+      "date": "July 2018 - May 2022",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/d/d3/BITS_Pilani-Logo.svg"
+    }
+  ],
+  "skills": [
+    { "name": "Web Development", "type": "web" },
+    { "name": "Deep Learning", "type": "ai" },
+    { "name": "Android Development", "type": "web" },
+    { "name": "Computer Vision", "type": "ai" },
+    { "name": "Machine Learning", "type": "ai" },
+    { "name": "Full-Stack Development", "type": "web" },
+    { "name": "Agentic AI Development", "type": "ai" },
+    { "name": "Model Context Protocol (MCP)", "type": "ai" },
+    { "name": "AI Agents", "type": "ai" },
+    { "name": "Object-Oriented Programming (OOP)", "type": "lang" },
+    { "name": "Microservices", "type": "devops" },
+    { "name": "Java", "type": "lang" },
+    { "name": "Python", "type": "lang" },
+    { "name": "C", "type": "lang" },
+    { "name": "Flutter", "type": "web" },
+    { "name": "JavaScript", "type": "web" },
+    { "name": "C++", "type": "lang" },
+    { "name": "Flask", "type": "web" },
+    { "name": "Git", "type": "os" },
+    { "name": "TensorFlow", "type": "ai" },
+    { "name": "Kubernetes", "type": "devops" },
+    { "name": "PyTorch", "type": "ai" },
+    { "name": "Ruby", "type": "lang" },
+    { "name": "Docker", "type": "devops" },
+    { "name": "Sionna", "type": "ai" },
+    { "name": "SQL", "type": "db" },
+    { "name": "fast.ai", "type": "ai" },
+    { "name": "Kotlin", "type": "lang" },
+    { "name": "React.js", "type": "web" },
+    { "name": "Node.js", "type": "web" },
+    { "name": "MATLAB", "type": "lang" }
+  ],
+  "certifications": [
+    {
+      "title": "Fundamentals of MCP",
+      "organization": "Hugging Face",
+      "date": "Dec 2025",
+      "url": "https://cas-bridge.xethub.hf.co/xet-bridge-us/682f5d0ff0af4dc8a20649c1/85feb07096f04e03872208801337f03277b2b72e0facc6df9aac8e40681bea31?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=cas%2F20260127%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260127T055852Z&X-Amz-Expires=3600&X-Amz-Signature=5988c5d8e317bfa81ffa14ee44b81f86f4a1a536af2fb4f081f13205d059012a&X-Amz-SignedHeaders=host&X-Xet-Cas-Uid=690416fe160ffd23a60b56d5&response-content-disposition=inline%3B+filename*%3DUTF-8%27%272025-12-25.png%3B+filename%3D%222025-12-25.png%22%3B&response-content-type=image%2Fpng&x-id=GetObject&Expires=1769497132&Policy=eyJTdGF0ZW1lbnQiOlt7IkNvbmRpdGlvbiI6eyJEYXRlTGVzc1RoYW4iOnsiQVdTOkVwb2NoVGltZSI6MTc2OTQ5NzEzMn19LCJSZXNvdXJjZSI6Imh0dHBzOi8vY2FzLWJyaWRnZS54ZXRodWIuaGYuY28veGV0LWJyaWRnZS11cy82ODJmNWQwZmYwYWY0ZGM4YTIwNjQ5YzEvODVmZWIwNzA5NmYwNGUwMzg3MjIwODgwMTMzN2YwMzI3N2IyYjcyZTBmYWNjNmRmOWFhYzhlNDA2ODFiZWEzMSoifV19&Signature=rYzFSEOpOh5V0wuFJxpYvVVUMjVRLeJBwcC9g-txWIRQ3TJBPl-e%7EY4DToz7kKMRWCmnhUuv2OIs5-zstUDd6rOtGLcMwwYKUneppXSIrSzzFLNVZMNoql9oERkeTKzDidkpEHszNE4xrO3E0iLd1jGk%7EejwdCGaPbaLGOtHNmvJyau3-rcNjJ0eLq8hyLEn1oa%7ELM9vkpsH2Drd9eBQlZ6iaG9ZzCXrvyw0UEo5o7-sUDS0uu8AdhvpQxe3u9utDxCIfC5FLW0tOk-1EBGCOVklZe1vEBVBzTZDuTAEEYXuVjcjZtV26oJjp-0endB1Ns11piCHAWAbXyMd6GwFnw__&Key-Pair-Id=K2L8F4GPSG1IFC"
+    },
+    {
+      "title": "AI Agents Fundamentals",
+      "organization": "Hugging Face",
+      "date": "Nov 2025",
+      "url": "https://cas-bridge.xethub.hf.co/xet-bridge-us/67a47037749ea2c4b9fafd4b/e85abdbf165ce16d12571040e452843c7326652054b06520e492a847a20e2d5b?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=cas%2F20260127%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260127T055918Z&X-Amz-Expires=3600&X-Amz-Signature=4beb7d794de06997859741b8726064e61a4221005fd67760b9777907ebb3e7cc&X-Amz-SignedHeaders=host&X-Xet-Cas-Uid=690416fe160ffd23a60b56d5&response-content-disposition=inline%3B+filename*%3DUTF-8%27%272025-11-02.png%3B+filename%3D%222025-11-02.png%22%3B&response-content-type=image%2Fpng&x-id=GetObject&Expires=1769497158&Policy=eyJTdGF0ZW1lbnQiOlt7IkNvbmRpdGlvbiI6eyJEYXRlTGVzc1RoYW4iOnsiQVdTOkVwb2NoVGltZSI6MTc2OTQ5NzE1OH19LCJSZXNvdXJjZSI6Imh0dHBzOi8vY2FzLWJyaWRnZS54ZXRodWIuaGYuY28veGV0LWJyaWRnZS11cy82N2E0NzAzNzc0OWVhMmM0YjlmYWZkNGIvZTg1YWJkYmYxNjVjZTE2ZDEyNTcxMDQwZTQ1Mjg0M2M3MzI2NjUyMDU0YjA2NTIwZTQ5MmE4NDdhMjBlMmQ1YioifV19&Signature=XbDhPK9tCYSHrBJO3oZ%7EU6WBQaOE4XoXSfUsEidujUqeA3OCTGFDDWx-MunQKm2VHqXtlVO6hl9IEoiJjvPHjqLlrkZsCUv4WndpfZZV7T0fpSNBhsViYrTg1b6Waq3waGNcfQPHI-oAaHDnXx-SaMZqukWWhSAR2KyF-EhYC5ZQdX0n0D1vnw48OtqAWH9lJe3WKq1UuhBgDo5kBXUASIM1VPljNF8YmKBu1SxyA7n%7EfMScXv2ENb-3bViInBLR16jyrmPf%7EPrxnNlSkX4k62xIACtYtxQ88DHRwaO%7E1xAJweAurz0vC5mUlF26MBOee-umlO5h7niz6%7Eb5qypLeA__&Key-Pair-Id=K2L8F4GPSG1IFC"
+    },
+    {
+      "title": "Research Week",
+      "organization": "Google",
+      "date": "May 2022",
+      "url": "https://drive.google.com/file/d/1i3rjdnhmnArVMA5T-9_S-AnoCba8459B/view"
+    },
+    {
+      "title": "Deep Learning Specialization",
+      "organization": "Coursera",
+      "date": "May 2020",
+      "url": "https://www.coursera.org/account/accomplishments/specialization/certificate/M6Z2BTR6EH99"
+    }
+  ],
+  "socials": [
+    { 
+      "name": "LinkedIn", 
+      "url": "https://www.linkedin.com/in/gauransh3007/", 
+      "type": "linkedin" 
+    },
+    { 
+      "name": "GitHub", 
+      "url": "https://github.com/garrysawyers3007", 
+      "type": "github" 
+    },
+    { 
+      "name": "Email", 
+      "url": "mailto:gauransh30@gmail.com", 
+      "type": "email" 
+    },
+    { 
+      "name": "Instagram", 
+      "url": "https://www.instagram.com/gauras_30/", 
+      "type": "instagram" 
+    }
+  ]
+  }
