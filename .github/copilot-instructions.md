@@ -56,7 +56,7 @@ User Query → ChatAPIClient → RAGService:
 
 **Format:** `<<ACTION:SCROLL_PROJECTS>>` (double angle brackets, uppercase, ends response)
 
-**Valid Actions:** `SCROLL_ABOUT`, `SCROLL_EDUCATION`, `SCROLL_EXPERIENCE`, `SCROLL_PROJECTS`, `SCROLL_CONTACT`
+**Valid Actions:** `SCROLL_ABOUT`, `SCROLL_EDUCATION`, `SCROLL_EXPERIENCE`, `SCROLL_PROJECTS`, `SCROLL_CERTIFICATIONS`, `SCROLL_CONTACT`
 
 **Implementation (ChatHistory.js):**
 - **Detection (lines 121-125):** Regex `/<?<?ACTION:SCROLL_[A-Z_]+>?>?/g` matches tags with or without brackets
@@ -68,11 +68,16 @@ User Query → ChatAPIClient → RAGService:
 "Check out the Image Coloration project—it uses PyTorch for real-time processing. <<ACTION:SCROLL_PROJECTS>>"
 ```
 
-**LLM System Prompt Instructions (ragService.js line ~470):**
+**LLM System Prompt Instructions (ragService.js line ~425-433):**
 - Append EXACTLY ONE action tag at end if response maps to navigation intent
 - No narration ("Let me scroll you...") — silent navigation only
 - If no clear navigation intent, omit tag entirely
-- Valid keywords: "Projects"/"GitHub"/"Code" → SCROLL_PROJECTS; "Work"/"Job" → SCROLL_EXPERIENCE; "Contact"/"Email" → SCROLL_CONTACT
+- Valid keyword mappings:
+  - "Projects"/"GitHub"/"Code" → `<<ACTION:SCROLL_PROJECTS>>`
+  - "Work"/"Job"/"Internship" → `<<ACTION:SCROLL_EXPERIENCE>>`
+  - "Degree"/"University"/"GPA" → `<<ACTION:SCROLL_EDUCATION>>`
+  - "Licenses"/"Certifications"/"Credentials" → `<<ACTION:SCROLL_CERTIFICATIONS>>`
+  - "Contact"/"Email"/"LinkedIn" → `<<ACTION:SCROLL_CONTACT>>`
 
 ### 3. CSS Variables & Theme System (Design Tokens)
 
@@ -123,6 +128,7 @@ const handleScrollToProjects = createScrollHandler('projects');
 - **useState** - `messages[]`, `isLoading`, `isChatVisible`, `theme` (lifted to App root)
 - **useCallback** - Debounce handlers to 300-500ms (input area, text processing)
 - **React.memo()** - Wrap expensive list items (Projects cards, Education timelines) to avoid re-renders
+- **Custom Hook: useInputNudge** - Session-scoped nudge animation for new users (respects prefers-reduced-motion)
 
 **Message History Structure:**
 ```javascript
@@ -133,6 +139,16 @@ const handleScrollToProjects = createScrollHandler('projects');
 ```
 - Passed to RAGService.query() for context window (truncate to last 6 messages)
 - ChatHistory renders in reverse order (newest at bottom, auto-scroll on update)
+
+### 6. Conversation Memory (Rolling Summary in sessionStorage)
+
+**Pattern (ragService.js ~678–724):**
+- **getConversationSummary()** - Retrieves persisted summary from sessionStorage
+- **setConversationSummary()** - Stores summary in sessionStorage (survives page reload within session)
+- **updateConversationSummaryAsync()** - Fire-and-forget LLM call to compress recent turns into concise bullet points (< 200 tokens)
+- **buildSummaryPrompt()** - Instructs LLM to extract enduring context, user goals, and decisions
+
+**Why:** Maintains conversation context across many turns without growing token count. Summary passed to LLM alongside recent history (last 6 messages) for continuity.
 
 ## Development Workflow
 
@@ -159,9 +175,11 @@ console.log(ragService.getStatus());
 npm run build        # Creates optimized /build (gzip binary index assets)
 npm test             # Runs Jest tests
 npm run eject        # ⚠️  One-way CRA eject (avoid unless necessary)
-```
-
-### Common Tasks
+``` in page sections:
+   - `id="about-me"`, `id="education"`, `id="experience"`, `id="projects"`, `id="certifications"`, `id="contact"`
+3. Check browser console for scroll errors
+4. Verify LLM response includes tag at **very end** of message
+5. Verify ChatHistory.js useEffect hook for action detection runs after message updat
 
 **Add new project to resume:**
 1. Edit [public/data/resume.json](public/data/resume.json) → add to `projects` array
@@ -255,11 +273,12 @@ src/
 │   ├── SuggestionChips.js # Quick action chips for common queries
 │   └── TopNav.js          # Header: theme toggle, chat toggle
 ├── pages/
-│   ├── AboutMe.js/css     # Profile section with image
-│   ├── Education.js/css   # Education timeline with GPA
-│   ├── Experience.js/css  # Work history (timeline layout)
-│   ├── Projects.js/css    # Project cards grid with expand/collapse
-│   └── ContactMe.js/css   # Contact info + social links
+│   ├── AboutMe.js/css          # Profile section with image
+│   ├── Education.js/css        # Education timeline with GPA
+│   ├── Experience.js/css       # Work history (timeline layout)
+│   ├── Projects.js/css         # Project cards grid with expand/collapse
+│   ├── Certifications.js/css   # License & certification cards
+│   └── ContactMe.js/css        # Contact info + social links
 └── services/
     ├── ragService.js      # Core: query embedding, retrieval, LLM inference, project detection
     └── chatAPIClient.js   # Wrapper: ensures RAG ready before queries
@@ -292,6 +311,8 @@ public/
 
 8. **Resume as API contract** - Single JSON file drives all portfolio sections + RAG context. Adding skills/projects only requires JSON edit + RAG index regeneration.
 
+9. **Conversation memory** - sessionStorage-based rolling summary compresses multi-turn conversations into concise bullets, reducing token bloat while preserving context continuity.
+
 ## Documentation
 
 - `CLIENT_SIDE_MIGRATION.md` - Server → client-side Langchain migration notes
@@ -301,5 +322,5 @@ public/
 
 ---
 
-**Last Updated:** January 2026  
-**Status:** Production-ready (client-side RAG)
+**Last Updated:** January 28, 2026  
+**Status:** Production-ready (client-side RAG + conversation memory)
