@@ -215,11 +215,6 @@
       "name": "Email", 
       "url": "mailto:gauransh30@gmail.com", 
       "type": "email" 
-    },
-    { 
-      "name": "Instagram", 
-      "url": "https://www.instagram.com/gauras_30/", 
-      "type": "instagram" 
     }
   ]
   }
