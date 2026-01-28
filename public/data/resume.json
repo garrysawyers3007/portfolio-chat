@@ -72,7 +72,7 @@
       "company": "Commonwealth Cyber Initiative",
       "title": "Graduate Research Assistant",
       "years": "Jan 2025 - Present",
-      "description": "Spearheading research on 5G/6G Wireless Security and AI-driven frameworks. Working on performance analysis of DMRS Density in 5G NR across mobility and numerologies using Sionna and Python.",
+      "description": "Designed and trained a PyTorch-based U-Net with FiLM conditioning to predict 5G coverage maps for transmitter–RIS wireless scenarios. Achieved an RMSE of 0.038 on the USC dataset, establishing the first baseline for transmitter–RIS scenarios.",
       "logoUrl": "/assets/CCI.png", 
       "technologies": ["5G", "Sionna", "Python", "Deep Learning", "PyTorch"]
     },
@@ -80,17 +80,17 @@
       "company": "MathWorks",
       "title": "Software Engineering Intern (EDG)",
       "years": "June 2025 - Aug 2025",
-      "description": "Built interactive dashboard using JavaScript and UI Builder used by 20+ IAT teams to monitor agent performance, SLA compliance, and incident resolution trends. Integrated data from incidents, surveys, and service catalogs into a unified source of truth.",
+      "description": "Built an Agent Performance dashboard using JavaScript and UI Builder used by 20+ IAT teams to monitor agent performance, SLA compliance, and incident resolution trends. Integrated data from incidents, surveys, and service catalogs into a unified source of truth.",
       "logoUrl": "/assets/Mathworks.png",
-      "technologies": ["JavaScript", "UI Builder", "Data Integration", "Dashboarding"]
+      "technologies": ["JavaScript", "UI Builder"]
     },
     {
       "company": "ServiceNow",
       "title": "Associate Software Engineer",
       "years": "July 2022 - Aug 2024",
-      "description": "Owned and shipped a production backend service using Ruby and REST API to track last-access timestamps for 100K+ enterprise users. Queried and aggregated high-volume time-series data from RocksDB-backed database using SQL for real-time performance dashboards.",
+      "description": "Owned and shipped a backend service (Ruby + REST) to track last-access timestamps for end-user devices, powering device-health metrics for 100K+ enterprise users. Built a full-stack feature using JavaScript, React, and GlideRecord to visualize application network hops, helping enterprise administrators diagnose connectivity issues faster. Queried and aggregated high-volume time-series data from a RocksDB-backed time-series database, using SQL, for real-time prformance dashboards. Automated UI regression test suites using Selenium and Java, reducing manual QA effort by ∼30% and preventing regressions prior to production release.",
       "logoUrl": "/assets/ServiceNow.png",
-      "technologies": ["Ruby", "React", "PostgreSQL", "RocksDB", "Java"]
+      "technologies": ["Ruby", "React", "PostgreSQL", "RocksDB", "Java", "REST", "Selenium"]
     },
     {
       "company": "Vision & AI Lab (VAL), IISc Bangalore",
@@ -104,7 +104,7 @@
       "company": "Schmooze",
       "title": "Software Engineering Intern",
       "years": "Oct 2021 - May 2022",
-      "description": "Developed backend microservices using Flask and PyTorch. Worked on implementing gRPC for efficient service-to-service communication and deployed models for real-time inference.",
+      "description": "Built backend data pipelines using Flask, Celery, and PostgreSQL to compute and surface trending meme tag metrics, supporting real-time content ranking. Developed a gRPC microservice powered by DistilBERT (PyTorch) to generate semantic query synonyms, improving search relevance. Integrated ElasticSearch for affinity vector matching, enhancing recommendation relevance in search flows.",
       "logoUrl": "/assets/Schmooze.png",
       "technologies": ["Flask", "PyTorch", "gRPC", "ElasticSearch", "Celery"]
     },
@@ -112,7 +112,7 @@
       "company": "Freecharge",
       "title": "Software Engineering Intern",
       "years": "May 2021 - July 2021",
-      "description": "Contributed to the Android codebase using Kotlin. Implemented new UI/UX designs and optimized mobile app performance for better user engagement.",
+      "description": "Designed and built Android app UI (Landing, Onboarding, Login/SignUp) using Kotlin in Android Studio.",
       "logoUrl": "/assets/Freecharge.png",
       "technologies": ["Kotlin", "Android Studio", "Mobile Dev"]
     },

@@ -5,15 +5,6 @@ import SectionHeader from '../components/SectionHeader';
 const Experience = ({ resumeExperience }) => {
   if (!resumeExperience || resumeExperience.length === 0) return null;
 
-  const toBullets = (text) => {
-    if (!text || typeof text !== 'string') return [];
-    return text
-      .split(/\.|\n|\u2022/) // split on periods, newlines, bullets
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .slice(0, 3);
-  };
-
   return (
     <section id="experience" className="section experience-section">
       <div className="container experience-container">
@@ -22,7 +13,6 @@ const Experience = ({ resumeExperience }) => {
         <div className="experience-list">
           {resumeExperience.map((job, index) => {
             const isCurrent = index === 0;
-            const bullets = toBullets(job.description);
             return (
               <div key={index} className={`experience-item ${isCurrent ? 'current' : ''}`}>
                 <div className="timeline-col">
@@ -52,13 +42,7 @@ const Experience = ({ resumeExperience }) => {
                       <div className="exp-role">{job.title}</div>
                     </div>
 
-                    {bullets.length > 0 ? (
-                      <ul className="exp-bullets">
-                        {bullets.map((line, i) => (
-                          <li key={i}>{line}</li>
-                        ))}
-                      </ul>
-                    ) : (
+                    {job.description && (
                       <p className="exp-description">{job.description}</p>
                     )}
 
