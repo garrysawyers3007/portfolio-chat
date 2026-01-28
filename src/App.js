@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
+import { Analytics } from '@vercel/analytics/react';
 import TopNav from './components/TopNav';
 import ChatHistory from './components/ChatHistory';
 import InputArea from './components/InputArea';
@@ -188,6 +189,7 @@ const App = () => {
           </>
         )}
       </main>
+      <Analytics />
     </div>
   );
 };
