@@ -30,6 +30,12 @@ User Query → ChatAPIClient → RAGService:
 
 ### 1. Binary Index RAG (Custom, No External Vector Libs)
 
+**LLM Tool Integration:**
+- RAGService binds tools to LLM via `this.llmWithTools` for structured data access
+- Available tools: `experience`, `education`, `projects`, `skills`, `certifications` (lazy-initialized in `initialize()`)
+- Tools return JSON subsections from `resume.json` without embedding retrieval
+- Used as fallback when user asks for specific resume data not well-indexed in RAG
+
 **Assets in `/public/rag/`:**
 - `meta.json` - Metadata (count, dim, items[] with file_path, repo/project_name, chunk_id, text_offset, text_length, start_line, end_line)
 - `vectors.f32` - Pre-computed L2-normalized embeddings (Float32Array, count × 1536)
@@ -68,8 +74,9 @@ User Query → ChatAPIClient → RAGService:
 "Check out the Image Coloration project—it uses PyTorch for real-time processing. <<ACTION:SCROLL_PROJECTS>>"
 ```
 
-**LLM System Prompt Instructions (ragService.js line ~425-433):**
-- Append EXACTLY ONE action tag at end if response maps to navigation intent
+**LLM System Prompt Instructions (ragService.js):**
+- Append EXACTLY ONE action tag **at the very end** of response if navigation intent detected
+- Tag placement: Last character of response message (after all punctuation)
 - No narration ("Let me scroll you...") — silent navigation only
 - If no clear navigation intent, omit tag entirely
 - Valid keyword mappings:
@@ -78,6 +85,11 @@ User Query → ChatAPIClient → RAGService:
   - "Degree"/"University"/"GPA" → `<<ACTION:SCROLL_EDUCATION>>`
   - "Licenses"/"Certifications"/"Credentials" → `<<ACTION:SCROLL_CERTIFICATIONS>>`
   - "Contact"/"Email"/"LinkedIn" → `<<ACTION:SCROLL_CONTACT>>`
+
+**Example (correct placement):**
+```
+"I worked on several projects involving Python and data processing. The most recent one is Image Coloration using PyTorch. <<ACTION:SCROLL_PROJECTS>>"
+```
 
 ### 3. CSS Variables & Theme System (Design Tokens)
 
@@ -152,12 +164,17 @@ const handleScrollToProjects = createScrollHandler('projects');
 
 ## Development Workflow
 
+### Environment Variables
+Create `.env.local` in project root with:
+```bash
+REACT_APP_OPENAI_API_KEY=sk-...                    # Required: OpenAI API key
+REACT_APP_LLM_MODEL=gpt-3.5-turbo                  # Optional: 'gpt-3.5-turbo' (default) or 'gpt-4'
+REACT_APP_RAG_ENABLED=true                         # Optional: Enable/disable RAG (default: true)
+```
+
 ### Quick Setup (5 min)
 ```bash
 npm install
-# Create .env.local:
-REACT_APP_OPENAI_API_KEY=sk-...
-REACT_APP_LLM_MODEL=gpt-3.5-turbo  # or gpt-4
 npm start  # Runs on http://localhost:3000
 ```
 
@@ -183,8 +200,13 @@ npm run eject        # ⚠️  One-way CRA eject (avoid unless necessary)
 
 **Add new project to resume:**
 1. Edit [public/data/resume.json](public/data/resume.json) → add to `projects` array
-2. Regenerate RAG index (Python script) → update `/rag/*` files
-3. Restart app (React will fetch new resume.json)
+2. **Regenerate RAG index** (important for chat context):
+   - Locate the Python RAG indexing script (check project root or docs for location)
+   - Run script with path to `public/data/resume.json`
+   - Script updates `/public/rag/meta.json`, `/public/rag/vectors.f32`, `/public/rag/texts.txt`
+3. Restart app (React fetches new resume.json + RAG service loads updated index)
+
+**Without RAG index regeneration:** New projects appear in portfolio UI but chat won't have context about them.
 
 **Fix action tag not executing:**
 1. Verify ChatHistory.js regex matches: `/<?<?ACTION:SCROLL_[A-Z_]+>?>?/g`

@@ -2,6 +2,8 @@
 
 An interactive AI-powered portfolio with a client-side RAG chatbot. Ask questions about my projects, experience, and skills—no backend required.
 
+**🌐 Live:** [gauranshsawhney.site](https://gauranshsawhney.site)
+
 ## ✨ Features
 
 - **AI Chat Assistant** powered by OpenAI GPT
@@ -10,7 +12,7 @@ An interactive AI-powered portfolio with a client-side RAG chatbot. Ask question
 - **Dark/Light Themes** with system preference detection
 - **Fully Responsive** - Mobile-first design
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Local Development)
 
 ```bash
 # Install
@@ -23,7 +25,7 @@ echo "REACT_APP_OPENAI_API_KEY=sk-..." > .env.local
 npm start
 ```
 
-Opens at http://localhost:3000
+Opens at http://localhost:3000 | Visit live site: [gauranshsawhney.site](https://gauranshsawhney.site)
 
 ## 🏗️ Tech Stack
 
@@ -55,6 +57,9 @@ Theme colors in `src/index.css`:
 
 ## 📱 Deployment
 
+Currently hosted on **[gauranshsawhney.site](https://gauranshsawhney.site)**.
+
+To deploy your own version:
 ```bash
 # Build
 npm run build

@@ -277,6 +277,20 @@ export class RAGChatService {
       });
     }
 
+    // 4. Add explicit aliases for portfolio-chat (this website/project)
+    const portfolioAliases = [
+      'this website',
+      'this project',
+      'this portfolio',
+      'portfolio chat',
+      'ai portfolio',
+      'rag portfolio',
+      'portfolio assistant'
+    ];
+    portfolioAliases.forEach(alias => {
+      this.projectAliases.set(alias, 'portfolio-chat');
+    });
+
     console.log('✓ Built project aliases:', this.projectAliases.size, 'aliases for', this.repoNames.length, 'repos');
   }
 
@@ -443,7 +457,12 @@ export class RAGChatService {
     return `You are the official AI Portfolio Assistant for **Gauransh Sawhney**, a Full-stack / AI / ML software engineer and graduate student.
       Your role is to represent Gauransh professionally, accurately, and conservatively.
 
-      ## 🔒 Core Rules
+      ## � Context Recognition
+      **This Website / This Project refers to:** "portfolio-chat" (the AI-powered portfolio RAG system you're running in)
+      When users ask about "this website", "this project", "portfolio chat", or the portfolio assistant itself, they're asking about the portfolio-chat project.
+      Use the get_projects tool to reference its details if needed.
+
+      ## �🔒 Core Rules
       1. **Ground everything:** Only cite information explicitly available via tools, retrieved context, or your training knowledge about public projects.
       2. **Be honest:** If you don't have a detail, say "I don't have that specific information."
       3. **Cite sources:** When referencing code or technical details, mention the project name and source.

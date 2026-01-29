@@ -11,6 +11,16 @@
     },
     "projects": [
       {
+        "title": "AI-Powered Portfolio",
+        "highlight": "React-based, client-orchestrated RAG system for resume and GitHub insights",
+        "featured": true,
+        "date": "Jan 2026",
+        "description": "Built a React-based, client-orchestrated RAG system to answer recruiter and technical questions over resume and GitHub repositories using OpenAI LLMs. Implemented LangChain-based retrieval and prompt orchestration on the frontend, including document chunking, embedding generation, and semantic vector search to enable grounded responses. Designed a lightweight agentic loop for tool selection, context planning, and response generation, balancing answer quality, latency, and token usage within browser constraints.",
+        "technologies": ["React", "Langchain", "OpenAI API", "RAG", "JavaScript"],
+        "url": "https://github.com/garrysawyers3007/portfolio-chat",
+        "repo_name": "portfolio-chat"
+      },
+      {
       "title": "Vision-Controlled Flappy Bird",
       "highlight": "Real-time gesture control via computer vision",
       "featured": true,
@@ -23,7 +33,7 @@
       {
         "title": "Gray to Glory: Analysis of Image Coloration Models",
         "highlight": "Deep learning model comparison achieving 5% MAE improvement",
-        "featured": true,
+        "featured": false,
         "date": "Sep 2024 - Dec 2024",
         "description": "Automatic image colorization via deep learning (CNN, U-Net, ResNet 18, GANs). Improved color fidelity: MAE 0.0848→0.0807, LPIPS 0.132→0.148.",
         "technologies": ["Computer Vision", "Python", "PyTorch", "Deep Learning"],

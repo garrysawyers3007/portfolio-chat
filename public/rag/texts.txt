@@ -28607,6 +28607,3790 @@ const axiosHeaders = {
 	}
 };
 export { baseUrl, axiosHeaders }
+# Portfolio Chat - AI Agent Guide
+
+**Quick Overview:** React portfolio with client-side RAG chatbot. Binary vector index + OpenAI Embeddings + Langchain LLM. No backend server needed. Everything runs in the browser.
+
+## Core Architecture
+### Data Flow (All Client-Side)
+```
+User Query → ChatAPIClient → RAGService:
+ 1. Query Embedding (OpenAI text-embedding-3-large)
+ 2. Similarity Search (dot product on Float32 vectors)
+ 3. Chunk Deduplication (by chunk_id)
+ 4. LLM Inference (gpt-3.5-turbo or gpt-4)
+ 5. Email Link Normalization
+→ Response with Action Tags → ChatHistory Parser → Auto-scroll Navigation
+```
+
+**Key Files:**
+- [src/services/ragService.js](src/services/ragService.js) - Binary index retrieval + LLM prompting + project detection (~600 lines)
+- [src/services/chatAPIClient.js](src/services/chatAPIClient.js) - Client-side Langchain wrapper (~50 lines)
+- [src/components/ChatHistory.js](src/components/ChatHistory.js) - Message display + action tag parser + formatting
+- [src/App.js](src/App.js) - Root state (messages, theme, chat visibility) + initialization
+- [public/data/resume.json](public/data/resume.json) - Portfolio content (experience, education, projects, skills, socials)
+- [public/rag/](public/rag/) - Binary index assets (meta.json, vectors.f32, texts.txt)
+
+**NO backend server** - `server.js` is deprecated (see [CLIENT_SIDE_MIGRATION.md](CLIENT_SIDE_MIGRATION.md))
+
+## Critical Patterns
+### 1. Binary Index RAG (Custom, No External Vector Libs)
+
+**Assets in `/public/rag/`:**
+- `meta.json` - Metadata (count, dim, items[] with file_path, repo/project_name, chunk_id, text_offset, text_length, start_line, end_line)
+- `vectors.f32` - Pre-computed L2-normalized embeddings (Float32Array, count × 1536)
+- `texts.txt` - Concatenated UTF-8 chunk texts
+
+**Retrieval Process (ragService.js):**
+1. **embedQuery()** - Convert user message to embedding via OpenAI text-embedding-3-large, normalize to L2
+2. **retrieveTopK()** - Compute dot-product similarity for all vectors, sort descending, return top-k
+3. **dedupeAndFormatChunks()** - Deduplicate by `chunk_id` (eliminate duplicates across repos), format with citations
+4. **LLM invocation** - Pass system prompt + retrieved context + conversation history to gpt-3.5-turbo/gpt-4
+
+**Project Detection (before retrieval):**
+- **detectProjectContext()** - Match user query against `projectAliases` map (normalized project titles)
+- If no alias match, **detectProjectContextViaLLM()** - Ask LLM which project user references
+- Use `repoFilter` to scope retrieval to matching project only (8 chunks scoped vs 10 chunks broad)
+
+**Why binary format?**
+- Faster load (~100ms vs seconds for JSON)
+- Lower memory (binary vs JSON arrays)
+- Enables O(1) text retrieval by offset (no deserialization per chunk)
+- Use `repoFilter` to scope retrieval to matching project only (8 chunks scoped vs 10 chunks broad)
+
+**Why binary format?**
+- Faster load (~100ms vs seconds for JSON)
+- Lower memory (binary vs JSON arrays)
+- Enables O(1) text retrieval by offset (no deserialization per chunk)
+- Simple dot-product similarity (no external vector libs needed)
+### 2. Action Tags for Auto-Navigation (Silent Protocol)
+
+**Format:** `>` (double angle brackets, uppercase, ends response)
+
+**Valid Actions:** `SCROLL_ABOUT`, `SCROLL_EDUCATION`, `SCROLL_EXPERIENCE`, `SCROLL_PROJECTS`, `SCROLL_CERTIFICATIONS`, `SCROLL_CONTACT`
+
+**Implementation (ChatHistory.js):**
+- **Detection (lines 121-125):** Regex `/?>?/g` matches tags with or without brackets
+- **Stripping:** Remove tags from display text via regex
+- **Execution:** Detect action type → close chat → setTimeout 300ms → scrollIntoView() target element
+
+**Example in LLM Response:**
+```
+"Check out the Image Coloration project—it uses PyTorch for real-time processing. >"
+```
+
+**LLM System Prompt Instructions (ragService.js line ~425-433):**
+- Append EXACTLY ONE action tag at end if response maps to navigation intent
+- No narration ("Let me scroll you...") — silent navigation only
+- If no clear navigation intent, omit tag entirely
+- Valid keyword mappings:
+ - "Projects"/"GitHub"/"Code" → `>`
+ - "Work"/"Job"/"Internship" → `>`
+ - "Degree"/"University"/"GPA" → `>`
+ - "Licenses"/"Certifications"/"Credentials" → `>`
+ - "Contact"/"Email"/"LinkedIn" → `>`
+### 3. CSS Variables & Theme System (Design Tokens)
+
+**All styling defined in [src/index.css](src/index.css) (lines 1–100):**
+- Dark theme (default): `--bg: #0B0F19`, `--text: #E5E7EB`, `--primary: #22D3EE` (neon cyan)
+- Light theme: `--bg: #F1F5F9`, `--text: #0F172A`, `--primary: #0EA5E9` (bright blue)
+- All sizes, spacing, transitions also tokenized (--space-*, --radius, --transition-*)
+
+**Theme Switching Mechanism:**
+- Controlled by `document.documentElement.dataset.theme` ("dark" or "light")
+- TopNav.js detects system preference on mount via `window.matchMedia('(prefers-color-scheme)')`
+- Single attribute change cascades to all components (no re-renders needed)
+
+**Usage Rules:**
+- ✅ ALWAYS use CSS variables (`color: var(--text)`) — NEVER hardcoded colors
+- ✅ PREFER shared utilities (`.section`, `.card`, `.chip`, `.btn` from App.css)
+- ✅ Semantic HTML + flex/grid for layout (avoid absolute positioning)
+- ✅ ALL interactive elements MUST have `:focus-visible` styles
+- ✅ ALL animations MUST respect `@media (prefers-reduced-motion: reduce)` (see App.js lines 23–37)
+- ❌ NEVER inline styles (`style={{}}`) except for truly dynamic values
+- ❌ NEVER hardcoded colors/spacing/borders
+### 4. Message Formatting & Link Parsing (ChatHistory.js)
+
+**Three-stage formatting pipeline:**
+1. **Link Parsing** - `[label](url)` → `{label}` (supports mailto: links)
+2. **Bold Parsing** - `**text**` → `text`
+3. **Email Normalization** - Plain emails auto-converted to `[email](mailto:email)` by ragService.normalizeEmails()
+
+**Factory Pattern for DRY Code (ChatHistory.js):**
+```javascript
+const createScrollHandler = (sectionId) => () => {
+ onCloseChat();
+ setTimeout(() => document.getElementById(sectionId)?.scrollIntoView(), 300);
+};
+
+// Reuse for all 5 sections
+const handleScrollToEducation = createScrollHandler('education');
+const handleScrollToProjects = createScrollHandler('projects');
+```
+**Why:** Eliminates repeated setTimeout + scrollIntoView logic 5+ times
+### 5. React Hooks & State Management
+
+**Key patterns in App.js:**
+- **useRef** - `containerRef`, `nudgeTimeoutRef` for DOM access and cleanup
+- **useEffect** - Initialize RAG service once on mount, cleanup timers on unmount
+- **useState** - `messages[]`, `isLoading`, `isChatVisible`, `theme` (lifted to App root)
+- **useCallback** - Debounce handlers to 300-500ms (input area, text processing)
+- **React.memo()** - Wrap expensive list items (Projects cards, Education timelines) to avoid re-renders
+- **Custom Hook: useInputNudge** - Session-scoped nudge animation for new users (respects prefers-reduced-motion)
+
+**Message History Structure:**
+```javascript
+[
+ { role: 'user', content: 'Tell me about X' },
+ { role: 'assistant', content: 'Response with >' }
+]
+```
+- Passed to RAGService.query() for context window (truncate to last 6 messages)
+- ChatHistory renders in reverse order (newest at bottom, auto-scroll on update)
+### 6. Conversation Memory (Rolling Summary in sessionStorage)
+
+**Pattern (ragService.js ~678–724):**
+- **getConversationSummary()** - Retrieves persisted summary from sessionStorage
+- **setConversationSummary()** - Stores summary in sessionStorage (survives page reload within session)
+- **updateConversationSummaryAsync()** - Fire-and-forget LLM call to compress recent turns into concise bullet points (?>?/g`
+2. Check target element exists: `id="projects"`, `id="education"`, etc. (see page JS files)
+3. Check browser console for scroll errors
+4. Verify LLM response includes tag at **very end** of message
+
+**Update theme colors:**
+1. Edit [src/index.css](src/index.css) → CSS variables in `:root[data-theme="dark/light"]`
+2. Component CSS files inherit variables automatically
+3. Test both dark/light modes: TopNav theme toggle tests both
+
+## Code Standards (Enforced)
+### CSS Rules
+- ✅ ALWAYS use CSS variables from [src/index.css](src/index.css)
+- ✅ PREFER shared utilities (`.section`, `.card`, `.chip`, `.btn`)
+- ✅ ALL interactive elements MUST have `:focus-visible` styles (accessibility)
+- ✅ ALL animations MUST respect `@media (prefers-reduced-motion: reduce)`
+- ✅ Use semantic HTML (``, ``, not ``)
+- ❌ NEVER inline styles (`style={{}}`) unless computing dynamic values
+- ❌ NEVER hardcoded colors/spacing/radii
+### React Hooks
+- ✅ Call hooks at top level BEFORE conditional returns
+- ✅ Debounce user input (300-500ms via useCallback)
+- ✅ Use React.memo() for list items (Projects, Education cards)
+- ✅ Cleanup side effects: always return cleanup function from useEffect
+- ❌ NEVER call hooks inside conditions or loops
+### Langchain & LLM
+- ✅ Initialize embedder once in `RAGService.initialize()` on App mount
+- ✅ Always pass conversation history (last 6 messages) to maintain context
+- ✅ Wrap LLM calls in try-catch with fallback to resume-only context
+- ✅ Normalize emails in LLM responses via `ragService.normalizeEmails()`
+- ❌ NEVER expose API key in frontend code (use .env.local only)
+### Accessibility
+- ✅ Semantic HTML (``, ``, ``)
+- ✅ ARIA labels where needed (`aria-label`, `aria-expanded`)
+- ✅ Touch targets: 44×44px minimum
+- ✅ Alt text for images; empty alt (`alt=""`) for decorative icons
+- ✅ Keyboard navigation: Tab through interactive elements (buttons, links, inputs)
+
+## Debugging Checklist
+### RAG Not Initializing
+- [ ] `.env.local` has `REACT_APP_OPENAI_API_KEY=sk-...`
+- [ ] `/rag/meta.json` exists and valid JSON (check Network tab)
+- [ ] `/rag/vectors.f32` size = count × 1536 × 4 bytes (binary Float32)
+- [ ] `/rag/texts.txt` size matches total text_length sum in meta.json
+- [ ] Browser console shows "✅ RAG initialized successfully"
+- [ ] `ragService.getStatus()` returns `{ initialized: true, indexLoaded: true, apiKey: 'configured' }`
+### Action Tags Visible in Chat (Not Executing)
+- [ ] ChatHistory.js regex correctly strips: `/?>?/g`
+- [ ] LLM response has tag at **very end** (e.g., "...project. >")
+- [ ] Target section has correct `id` attribute (e.g., ``)
+- [ ] Browser console: check for scroll errors, verify `document.getElementById()` finds element
+- [ ] Test: manually paste tag in chat input to verify strip logic works
+### Theme Not Switching
+- [ ] `document.documentElement.dataset.theme` is either "dark" or "light"
+- [ ] CSS rules exist for both `:root[data-theme="dark"]` and `:root[data-theme="light"]`
+- [ ] Component CSS imports color tokens: `color: var(--text)`
+- [ ] TopNav.js detects system preference: `window.matchMedia('(prefers-color-scheme)')`
+- [ ] Check DevTools: computed styles show correct CSS variable values
+### Chat Not Responding
+- [ ] OpenAI API key valid (test: `openai.ChatCompletion.create({...})`)
+- [ ] Billing/quota not exceeded on OpenAI account
+- [ ] Browser console: check for errors in chatAPIClient.sendMessage()
+- [ ] Verify RAG initialized before sending message
+- [ ] Check Network tab: POST requests to OpenAI endpoints returning 200
+
+## Project Structure
+```
+src/
+├── App.js # Root component: state (messages, theme, chat), RAG init
+├── App.css # Chat UI, layout utilities (.section, .card, .btn)
+├── index.css # Design tokens (colors, spacing, typography)
+├── components/
+│ ├── ChatHistory.js # Message list: action tag detection, link/bold parsing, auto-scroll
+│ ├── InputArea.js # Text input + debounced send
+│ ├── SectionHeader.js # Section title component
+│ ├── SuggestionChips.js # Quick action chips for common queries
+│ └── TopNav.js # Header: theme toggle, chat toggle
+├── pages/
+│ ├── AboutMe.js/css # Profile section with image
+│ ├── Education.js/css # Education timeline with GPA
+│ ├── Experience.js/css # Work history (timeline layout)
+│ ├── Projects.js/css # Project cards grid with expand/collapse
+│ ├── Certifications.js/css # License & certification cards
+│ └── ContactMe.js/css # Contact info + social links
+└── services/
+ ├── ragService.js # Core: query embedding, retrieval, LLM inference, project detection
+│ ├── Experience.js/css # Work history (timeline layout)
+│ ├── Projects.js/css # Project cards grid with expand/collapse
+│ ├── Certifications.js/css # License & certification cards
+│ └── ContactMe.js/css # Contact info + social links
+└── services/
+ ├── ragService.js # Core: query embedding, retrieval, LLM inference, project detection
+ └── chatAPIClient.js # Wrapper: ensures RAG ready before queries
+
+public/
+├── data/
+│ ├── resume.json # Single source of truth: experience, education, projects, skills, socials
+│ └── site_data.json # (Legacy, may be deprecated)
+└── rag/
+ ├── meta.json # Index metadata: count, dim, items[] (file_path, repo, chunk_id, text offsets)
+ ├── vectors.f32 # Binary Float32 embeddings (pre-computed L2-normalized, dim=1536)
+ └── texts.txt # Concatenated chunk texts (UTF-8), indexed by text_offset/text_length
+```
+
+## Key Insights
+
+1. **Client-side architecture** - No backend complexity, OpenAI API called directly from browser (fine for portfolio/demo, not production apps with sensitive API keys)
+
+2. **Binary index design** - Custom retrieval optimized for small datasets (>, <>, or no brackets).
+
+4. **CSS variable architecture** - Theme switching is O(1) via single `data-theme` attribute change. No component re-renders.
+
+5. **Factory functions** - Core React pattern used throughout (createScrollHandler, createMessageFormatter, etc.)
+2. **Binary index design** - Custom retrieval optimized for small datasets (>, <>, or no brackets).
+
+4. **CSS variable architecture** - Theme switching is O(1) via single `data-theme` attribute change. No component re-renders.
+
+5. **Factory functions** - Core React pattern used throughout (createScrollHandler, createMessageFormatter, etc.)
+
+6. **Project context detection** - Two-tier approach: (1) alias matching with Jaccard similarity, (2) LLM fallback for fuzzy queries. Scopes retrieval to 8 chunks when project detected vs 10 for broad search.
+
+7. **Email normalization** - Idempotent regex in ragService handles `plain@email.com`, `[email](url)`, and existing `[email](mailto:...)` links without duplication.
+
+8. **Resume as API contract** - Single JSON file drives all portfolio sections + RAG context. Adding skills/projects only requires JSON edit + RAG index regeneration.
+
+9. **Conversation memory** - sessionStorage-based rolling summary compresses multi-turn conversations into concise bullets, reducing token bloat while preserving context continuity.
+
+## Documentation
+
+- `CLIENT_SIDE_MIGRATION.md` - Server → client-side Langchain migration notes
+- `DESIGN_TOKENS.md` - Complete CSS variable system reference (468 lines)
+- `LANGCHAIN_SETUP.md` / `LANGCHAIN_INTEGRATION.md` - Langchain config details
+- `README.md` - Standard CRA instructions (not project-specific)
+
+---
+- `DESIGN_TOKENS.md` - Complete CSS variable system reference (468 lines)
+- `LANGCHAIN_SETUP.md` / `LANGCHAIN_INTEGRATION.md` - Langchain config details
+- `README.md` - Standard CRA instructions (not project-specific)
+
+---
+
+**Last Updated:** January 28, 2026
+**Status:** Production-ready (client-side RAG + conversation memory)
+# ✅ Client-Side Langchain Migration Complete
+
+## Summary of Changes
+
+You've successfully migrated from a backend-based Langchain setup to a **fully client-side implementation**. No server.js needed!
+
+## What Changed
+### 🗑️ Removed
+- Backend API endpoints (`/api/chat`, `/api/health`, etc.)
+- Express.js server dependency
+- Node.js backend complexity
+- Backend .env configuration
+### ✨ Added/Updated
+- **Client-side Langchain RAG** in `ragService.js`
+- **Direct API client** in `chatAPIClient.js` (no backend proxy)
+- **Simplified `.env.local`** (only frontend config needed)
+- **Direct browser access** to OpenAI API (via Langchain)
+
+## Architecture
+```
+React App (browser)
+ ↓
+ChatAPIClient
+ ↓
+RAGService (Langchain)
+ ↓
+OpenAI API
+```
+
+## Key Advantages
+
+✅ **Simpler Setup** - Just `npm start`, no server.js
+✅ **No Network Latency** - Direct API calls from browser
+✅ **Faster Prototyping** - No backend code to maintain
+✅ **Self-Contained** - Everything in one React app
+✅ **Cost Effective** - No server infrastructure needed
+
+## Setup (5 minutes)
+
+1. **Install dependencies**
+ ```bash
+ npm install langchain openai
+ ```
+
+2. **Configure `.env.local`**
+ ```
+ REACT_APP_OPENAI_API_KEY=sk-...
+ REACT_APP_LLM_MODEL=gpt-3.5-turbo
+ REACT_APP_RAG_ENABLED=true
+ ```
+
+3. **Copy data to public**
+ ```bash
+ cp src/data/site_data.json public/data/site_data.json
+ ```
+
+4. **Run**
+ ```bash
+ npm start
+ ```
+
+## Files Overview
+
+| File | Purpose |
+|------|---------|
+| `src/services/ragService.js` | Langchain RAG chain setup & queries |
+| `src/services/chatAPIClient.js` | LLM interface (uses ragService) |
+| `src/App.js` | State management & message handling |
+| `LANGCHAIN_SETUP.md` | Complete setup guide |
+| `server.js` | DEPRECATED (kept as reference only) |
+
+## First Message Flow
+| `src/App.js` | State management & message handling |
+| `LANGCHAIN_SETUP.md` | Complete setup guide |
+| `server.js` | DEPRECATED (kept as reference only) |
+
+## First Message Flow
+
+1. **User types & hits send**
+2. **App calls `chatAPIClient.sendMessage()`**
+3. **RAGService initializes** (first time only):
+ - Fetches `public/data/site_data.json`
+ - Creates OpenAI embeddings
+ - Builds in-memory vector store
+4. **Langchain queries RAG chain**
+5. **OpenAI returns response** (with portfolio context)
+6. **Message appears in chat** with "⏳ Thinking..." indicator
+
+## Performance
+
+- **First message**: ~2-3 seconds (Langchain init)
+- **Subsequent messages**: ~1-2 seconds (direct API)
+- **No server overhead**: Pure client-side execution
+
+## Security Notes
+
+⚠️ Your OpenAI API key is exposed in the browser
+- Fine for personal/portfolio projects
+- For production apps, add a backend proxy to hide the key
+- Use environment variables on deployment platforms
+
+## Next Steps
+
+- ✅ Test the chat with your portfolio data
+- 🔄 Optional: Add streaming for real-time typing
+- 🔄 Optional: Use Vercel/Netlify for hosting (they handle env vars securely)
+- 🔄 Optional: Migrate to vector DB (Pinecone) for production scale
+
+**You're all set! 🚀**
+# Design Token System
+
+This document describes the comprehensive design token system implemented across the Portfolio Chat application.
+
+## Overview
+
+The design token system provides a single source of truth for all visual design decisions, enabling:
+- **Consistent theming** across dark and light modes
+- **Maintainable styles** with semantic naming
+- **Accessible focus states** with keyboard navigation support
+- **Reduced motion** support for users with vestibular disorders
+- **Scalable spacing** based on a consistent scale
+
+---
+
+## Token Categories
+### 🎨 Color Tokens
+
+#### Background Layers
+```css
+--background /* Base canvas (dark: #0B0F19, light: #F8FAFC) */
+--surface /* Cards, panels (dark: #0F172A, light: #FFFFFF) */
+--surface-2 /* Elevated surfaces (dark: #1E293B, light: #F1F5F9) */
+```
+
+#### Borders
+```css
+--border /* Subtle borders (dark: rgba(31,41,55,0.3), light: #E2E8F0) */
+--border-strong /* Emphasized borders (dark: rgba(31,41,55,0.5), light: #CBD5E1) */
+```
+
+#### Text
+```css
+--text /* Primary text (dark: #E5E7EB, light: #0F172A) */
+--text-muted /* Secondary text (dark: rgba(156,163,175,0.85), light: rgba(71,85,105,0.85)) */
+--text-subtle /* De-emphasized text (dark: rgba(156,163,175,0.5), light: rgba(71,85,105,0.5)) */
+```
+
+#### Primary Colors
+```css
+--primary /* Neon cyan accent (dark: #22D3EE, light: #0EA5E9) */
+--primary-hover /* Primary hover state (dark: #06B6D4, light: #0284C7) */
+--primary-2 /* Violet secondary accent (#8B5CF6) */
+--primary-2-hover /* Violet hover (#7C3AED) */
+```
+
+#### Status Colors
+```css
+--success /* Green (#10B981 dark, #059669 light) */
+--success-muted /* Success background (rgba with 15% or 10% opacity) */
+--warning /* Amber (#F59E0B dark, #D97706 light) */
+--warning-muted /* Warning background */
+--error /* Red (#EF4444 dark, #DC2626 light) */
+--error-muted /* Error background */
+```
+
+#### Shadows
+```css
+--shadow-sm /* Subtle shadow for cards */
+--error-muted /* Error background */
+```
+
+#### Shadows
+```css
+--shadow-sm /* Subtle shadow for cards */
+--shadow-md /* Medium elevation shadow */
+--shadow-lg /* High elevation shadow */
+--shadow-focus /* Cyan glow for focus states (0 0 0 3px rgba(cyan, 0.4)) */
+```
+
+---
+### 📐 Geometry Tokens
+
+#### Border Radius
+```css
+--radius-sm: 4px;
+--radius-md: 6px;
+--radius-lg: 8px;
+--radius-xl: 12px;
+--radius-full: 9999px; /* Perfect circles */
+```
+
+#### Spacing Scale (0.25rem = 4px base)
+```css
+--space-1: 0.25rem; /* 4px */
+--space-2: 0.5rem; /* 8px */
+--space-3: 0.75rem; /* 12px */
+--space-4: 1rem; /* 16px */
+--space-5: 1.25rem; /* 20px */
+--space-6: 1.5rem; /* 24px */
+--space-8: 2rem; /* 32px */
+--space-10: 2.5rem; /* 40px */
+--space-12: 3rem; /* 48px */
+--space-16: 4rem; /* 64px */
+--space-20: 5rem; /* 80px */
+--space-24: 6rem; /* 96px */
+```
+
+**Usage Guidelines:**
+- Component padding: `--space-4` to `--space-8`
+- Section padding: `--space-8` to `--space-16`
+- Gaps between elements: `--space-2` to `--space-6`
+- Large vertical spacing: `--space-12` to `--space-24`
+
+---
+### ✍️ Typography Tokens
+
+#### Font Families
+```css
+--font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+--font-mono: 'JetBrains Mono', 'Monaco', 'Courier New', monospace;
+```
+
+#### Font Weights
+```css
+--font-light: 300;
+--font-normal: 400;
+--font-medium: 500;
+--font-semibold: 600;
+--font-bold: 700;
+```
+
+---
+### ⏱️ Motion Tokens
+
+#### Transition Durations
+```css
+--transition-fast: 150ms; /* Quick interactions (hover, button press) */
+--transition-base: 200ms; /* Standard transitions (most UI changes) */
+--transition-slow: 300ms; /* Slower animations (panel open/close) */
+```
+
+#### Transition Timing Functions
+```css
+--ease-in-out: cubic-bezier(0.4, 0, 0.2, 1); /* Smooth start and end */
+--ease-out: cubic-bezier(0, 0, 0.2, 1); /* Smooth deceleration */
+--ease-in: cubic-bezier(0.4, 0, 1, 1); /* Smooth acceleration */
+```
+
+**Usage:**
+```css
+transition: color var(--transition-base) var(--ease-in-out),
+ opacity var(--transition-base) var(--ease-in-out);
+```
+
+---
+
+## Theme Switching
+### Implementation
+
+Themes are controlled via `data-theme` attribute on `` or ``:
+
+```javascript
+// Set dark theme
+document.documentElement.setAttribute('data-theme', 'dark');
+
+// Set light theme
+document.documentElement.setAttribute('data-theme', 'light');
+```
+### System Preference Detection
+
+The design system automatically respects system preferences:
+
+```css
+@media (prefers-color-scheme: light) {
+ :root:not([data-theme="dark"]) {
+ /* Light theme tokens automatically applied */
+ }
+}
+```
+
+**Behavior:**
+- If user manually sets theme → respect that choice
+- If no manual theme set → follow system preference
+- Persists across sessions (App.js handles localStorage)
+
+---
+
+## Accessibility Features
+### Focus-Visible States
+
+All interactive elements have enhanced focus rings for **keyboard navigation only** (not mouse clicks):
+
+```css
+*:focus-visible {
+ outline: 2px solid var(--primary);
+ outline-offset: 2px;
+ border-radius: var(--radius-sm);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+ outline: 2px solid var(--primary);
+ outline-offset: 2px;
+ box-shadow: var(--shadow-focus); /* Cyan glow */
+}
+```
+
+**Why focus-visible?**
+- Mouse users: No visible focus ring (cleaner UX)
+- Keyboard users: Clear focus indicators (better a11y)
+### Reduced Motion Support
+
+Respects user preference for reduced motion:
+
+```css
+@media (prefers-reduced-motion: reduce) {
+ *,
+ *::before,
+ *::after {
+ animation-duration: 0.01ms !important;
+ animation-iteration-count: 1 !important;
+ transition-duration: 0.01ms !important;
+ scroll-behavior: auto !important;
+ }
+}
+```
+
+**Applied to:**
+- All animations (cursor blink, fade-ins, etc.)
+- All transitions
+- Smooth scrolling
+
+---
+
+## Usage Examples
+### Component Styling
+
+#### Before (hardcoded values):
+```css
+.card {
+ padding: 16px 24px;
+ background: rgba(15, 23, 42, 0.3);
+ border: 1px solid rgba(31, 41, 55, 0.25);
+ border-radius: 4px;
+ color: #E5E7EB;
+ transition: border-color 0.2s ease;
+}
+
+.card:hover {
+ border-color: rgba(31, 41, 55, 0.5);
+}
+```
+
+#### After (design tokens):
+```css
+.card {
+ padding: var(--space-4) var(--space-6);
+ background: var(--surface);
+ border: 1px solid var(--border);
+ border-radius: var(--radius-sm);
+ color: var(--text);
+ transition: border-color var(--transition-base) var(--ease-in-out),
+ box-shadow var(--transition-base) var(--ease-in-out);
+}
+
+.card:hover {
+ border-color: var(--border-strong);
+ box-shadow: var(--shadow-sm);
+}
+
+.card:focus-visible {
+ outline: 2px solid var(--primary);
+ outline-offset: 2px;
+ box-shadow: var(--shadow-focus);
+}
+```
+### Interactive Elements
+
+```css
+.button {
+ padding: var(--space-2) var(--space-4);
+ background: var(--primary);
+ color: var(--surface);
+ border: none;
+ border-radius: var(--radius-md);
+ font-weight: var(--font-medium);
+ transition: background-color var(--transition-fast) var(--ease-in-out),
+ transform var(--transition-fast) var(--ease-out);
+}
+
+.button:hover {
+ background: var(--primary-hover);
+ transform: translateY(-1px);
+ box-shadow: var(--shadow-md);
+}
+
+.button:focus-visible {
+ outline: 2px solid var(--primary);
+ outline-offset: 2px;
+ box-shadow: var(--shadow-focus);
+}
+
+.button:active {
+ transform: translateY(0);
+}
+```
+### Tech Badges (with hover effects)
+
+```css
+.tech-badge {
+ padding: var(--space-1) var(--space-3);
+ background: var(--surface-2);
+ color: var(--text-muted);
+ border: 1px solid var(--border);
+ border-radius: var(--radius-sm);
+ font-family: var(--font-mono);
+ font-weight: var(--font-medium);
+ font-size: 0.75rem;
+ transition: background-color var(--transition-fast) var(--ease-in-out),
+ color var(--transition-fast) var(--ease-in-out),
+ border-color var(--transition-fast) var(--ease-in-out);
+}
+
+.tech-badge:hover {
+ background: var(--primary-2); /* Violet */
+ color: var(--surface);
+ border-color: var(--primary-2);
+}
+```
+
+---
+
+## Utility Classes
+
+Commonly used utilities for quick styling:
+### Spacing
+```css
+.mt-4 { margin-top: var(--space-4); }
+.mb-6 { margin-bottom: var(--space-6); }
+.p-4 { padding: var(--space-4); }
+```
+### Text
+```css
+.text-muted { color: var(--text-muted); }
+.text-subtle { color: var(--text-subtle); }
+.text-primary-color { color: var(--primary); }
+```
+### Surfaces
+```css
+.surface { background-color: var(--surface); }
+.surface-2 { background-color: var(--surface-2); }
+```
+### Borders
+```css
+.border { border: 1px solid var(--border); }
+.border-strong { border: 1px solid var(--border-strong); }
+.border-radius { border-radius: var(--radius-md); }
+```
+
+---
+
+## Migration Checklist
+
+When migrating existing components to the design token system:
+
+- [ ] Replace hardcoded colors with semantic tokens (`--text`, `--surface`, `--primary`)
+- [ ] Replace px spacing with spacing scale (`var(--space-4)`)
+- [ ] Replace hardcoded transitions with motion tokens (`var(--transition-base)`)
+- [ ] Replace hardcoded border-radius with radius tokens (`var(--radius-md)`)
+- [ ] Replace `:focus` with `:focus-visible` for keyboard-only focus rings
+- [ ] Add `box-shadow: var(--shadow-focus)` to focus-visible states
+- [ ] Test in both dark and light themes
+- [ ] Verify reduced motion media query disables animations
+
+---
+
+## File Locations
+### Token Definitions
+- **Primary definition:** `src/index.css` (lines 1-200)
+- **Dark theme:** `:root` selector (default)
+- **Light theme:** `html[data-theme="light"]` and `@media (prefers-color-scheme: light)`
+### Component Styles (Updated)
+- `src/App.css` - Main app, nav, chat, input, suggestions
+- `src/pages/Experience.css` - Work experience cards
+- `src/pages/Projects.css` - Project grid cards
+- `src/pages/Education.css` - Education timeline
+- `src/pages/ContactMe.css` - Contact section, social links
+- `src/pages/AboutMe.css` - Hero section, typing animation
+
+---
+
+## Best Practices
+### ✅ Do
+- Use semantic token names (`var(--text)`, not `var(--gray-200)`)
+- Use spacing scale consistently (`var(--space-4)` not `16px`)
+- Layer shadows for depth (`var(--shadow-sm)` → `var(--shadow-md)` on hover)
+- Use `:focus-visible` for interactive elements
+- Test both dark and light themes
+- Use motion tokens for consistent timing
+### ❌ Don't
+- Hardcode colors (`#22D3EE` → use `var(--primary)`)
+- Hardcode spacing (`padding: 16px` → use `var(--space-4)`)
+- Use `:focus` instead of `:focus-visible` (creates mouse focus rings)
+- Ignore reduced motion preferences
+- Mix token scales (e.g., `calc(var(--space-3) * 2.5)` → use `var(--space-8)`)
+
+---
+
+## Browser Support
+
+- Modern browsers (Chrome, Firefox, Safari, Edge)
+- CSS variables (100% coverage in modern browsers)
+- `:focus-visible` (100% coverage via polyfill if needed)
+- `prefers-color-scheme` (95%+ coverage)
+- `prefers-reduced-motion` (95%+ coverage)
+
+---
+
+## Future Enhancements
+
+Potential additions to the token system:
+
+1. **Breakpoint tokens** for responsive design
+ ```css
+ --breakpoint-sm: 640px;
+ --breakpoint-md: 768px;
+ --breakpoint-lg: 1024px;
+ ```
+
+2. **Z-index scale** for layering
+ ```css
+ --z-base: 1;
+ --z-dropdown: 100;
+ --z-modal: 1000;
+ --z-toast: 2000;
+ ```
+
+3. **Animation presets** for common patterns
+ ```css
+ --animation-fade-in: fadeIn 200ms ease-out;
+ --animation-slide-up: slideUp 300ms ease-out;
+ ```
+
+4. **Dark mode variant tokens** for specific overrides
+ ```css
+ --surface-hover-dark: rgba(31, 41, 55, 0.4);
+ --surface-hover-light: rgba(241, 245, 249, 1);
+ ```
+
+---
+
+## References
+
+- **CSS Variables Spec:** https://www.w3.org/TR/css-variables/
+- **Focus-visible Spec:** https://drafts.csswg.org/selectors-4/#the-focus-visible-pseudo
+---
+
+## References
+
+- **CSS Variables Spec:** https://www.w3.org/TR/css-variables/
+- **Focus-visible Spec:** https://drafts.csswg.org/selectors-4/#the-focus-visible-pseudo
+- **Prefers Reduced Motion:** https://www.w3.org/TR/mediaqueries-5/#prefers-reduced-motion
+- **WCAG Focus Guidelines:** https://www.w3.org/WAI/WCAG21/Understanding/focus-visible.html
+
+---
+
+**Last Updated:** January 2026
+**Status:** ✅ Production-ready
+# Fix Langchain Import Errors
+
+## Issue
+The Langchain imports need `@langchain/openai` package which was not installed.
+
+## Solution
+
+Run this command to install the required Langchain integration:
+
+```bash
+npm install @langchain/openai
+```
+
+Then restart your dev server:
+
+```bash
+npm start
+```
+
+## What This Does
+
+The `@langchain/openai` package provides browser-compatible exports for:
+- `ChatOpenAI` - LLM interface for chat
+- `OpenAIEmbeddings` - Vector embeddings generation
+
+This is separate from the main `langchain` package and needs to be installed explicitly.
+
+## After Installation
+
+The errors should be resolved and you'll be able to:
+1. Initialize Langchain RAG on first message
+2. Load your portfolio data from `public/data/site_data.json`
+3. Generate context-aware responses with OpenAI
+
+Enjoy! 🚀
+# Langchain RAG Integration - Summary
+
+## ✅ Completed Changes
+### 1. Frontend Components Updated
+
+#### App.js
+- ✅ Added `isLoading` and `error` state for async operations
+- ✅ Integrated `chatAPIClient.sendMessage()` with client-side Langchain
+- ✅ Added 30-second request timeout with auto-reset failsafe
+- ✅ Proper error handling with user-facing messages
+- ✅ Request throttling (disabled inputs while loading)
+
+#### ChatHistory.js
+- ✅ Added `isLoading` prop support
+- ✅ Typing indicator ("⏳ Thinking...") with pulse animation
+
+#### InputArea.js
+- ✅ Added `disabled` prop to prevent input during API calls
+- ✅ Prevent Enter key send while loading
+
+#### SuggestionChips.js
+- ✅ Added `disabled` prop to prevent clicks during loading
+### 2. Services Created
+
+#### src/services/chatAPIClient.js
+- ✅ Client-side LLM interface
+- ✅ `sendMessage()` method with conversation history support
+- ✅ RAG service integration
+- ✅ Environment-aware configuration
+
+#### src/services/ragService.js
+- ✅ Langchain RAG implementation (client-side)
+- ✅ Document loading from `public/data/` folder
+- ✅ Vector embeddings via OpenAI
+- ✅ RetrievalQAChain for context-aware responses
+- ✅ One-time initialization on first message
+### 3. Configuration Files
+
+#### .env.local
+```
+REACT_APP_OPENAI_API_KEY=...
+REACT_APP_LLM_MODEL=gpt-3.5-turbo
+REACT_APP_RAG_ENABLED=true
+```
+
+#### LANGCHAIN_SETUP.md
+- Complete setup instructions
+- Architecture diagram (client-side)
+- Troubleshooting guide
+- Security notes and best practices
+- Performance considerations
+### 4. Styling Enhancements
+
+#### App.css
+- ✅ Disabled state styling for inputs/buttons
+- ✅ Typing indicator animation
+- ✅ Error message styling
+- ✅ Visual feedback for loading states
+### 5. Documentation
+
+#### .github/copilot-instructions.md
+- ✅ Updated with client-side Langchain architecture
+- ✅ RAG service documentation
+- ✅ Setup instructions integrated
+- ✅ No backend server required noted
+
+## 🚀 Quick Start
+### Setup (one-time)
+```bash
+npm install
+npm install langchain openai
+
+# Create .env.local with your OpenAI API key
+# Copy src/data/site_data.json to public/data/site_data.json
+```
+### Run
+```bash
+npm start
+```
+
+Visit http://localhost:3000 - that's it! No backend needed! 🎉
+
+## 📁 File Structure
+```
+portfolio-chat/
+├── .env.local (new - add your API keys)
+├── .env.example (new - reference template)
+├── server.js (deprecated - now just a placeholder)
+├── LANGCHAIN_SETUP.md (updated - client-side setup)
+├── LANGCHAIN_INTEGRATION.md (new - this file)
+├── src/
+│ ├── App.js (updated - client-side RAG integration)
+│ ├── App.css (updated - loading/error states)
+│ ├── components/
+│ │ ├── ChatHistory.js (updated - loading indicator)
+│ │ ├── InputArea.js (updated - disabled state)
+│ │ ├── SuggestionChips.js (updated - disabled state)
+│ │ ├── HeroSection.js
+│ │ └── TopNav.js
+│ ├── services/ (new)
+│ │ ├── chatAPIClient.js (updated - client-side)
+│ │ └── ragService.js (updated - Langchain implementation)
+│ └── data/
+│ ├── site_data.json (existing - your portfolio data)
+│ └── Gauransh_Sawhney_SDE_Resume.pdf (existing)
+├── public/
+│ └── data/
+│ └── site_data.json (copy from src/data for browser access)
+└── .github/
+ └── copilot-instructions.md (updated - client-side)
+```
+
+## 🔑 Key Features
+
+1. **Langchain RAG**: Context-aware responses using your portfolio data
+2. **OpenAI Integration**: GPT-3.5-turbo (configurable to GPT-4)
+3. **Error Handling**: Graceful failures with user-friendly messages
+4. **Loading States**: Visual feedback while waiting for API responses
+## 🔑 Key Features
+
+1. **Langchain RAG**: Context-aware responses using your portfolio data
+2. **OpenAI Integration**: GPT-3.5-turbo (configurable to GPT-4)
+3. **Error Handling**: Graceful failures with user-friendly messages
+4. **Loading States**: Visual feedback while waiting for API responses
+5. **Request Throttling**: Prevents duplicate API calls
+6. **Timeout Management**: 30-second failsafe with auto-reset
+7. **Client-Side Processing**: No backend needed, runs entirely in browser
+8. **Fast Initial Load**: Only first message triggers Langchain init (~2-3s)
+
+## ⚠️ Important
+
+- **API Key Setup**: Add your OpenAI API key to `.env.local`
+- **Data Location**: Copy `src/data/site_data.json` to `public/data/` (browsers can only access public folder)
+- **No Backend**: Don't run `server.js` - it's deprecated
+- **First Message**: Slightly slower (~2-3s) as Langchain initializes embeddings
+
+## 🔧 Customization
+
+- Change LLM model: Update `REACT_APP_LLM_MODEL` in `.env.local`
+- Disable RAG: Set `REACT_APP_RAG_ENABLED=false`
+- Adjust timeout: Modify timeout value in `App.js` line ~52
+- Add more data: Drop files in both `src/data/` and `public/data/`
+
+## 📚 Next Steps
+
+1. ✅ Fill in `.env.local` with your OpenAI API key
+2. ✅ Copy portfolio data to `public/data/`
+3. ✅ Run `npm install langchain openai`
+4. ✅ Run `npm start`
+5. 🔄 Optional: Add streaming responses for real-time typing
+1. ✅ Fill in `.env.local` with your OpenAI API key
+2. ✅ Copy portfolio data to `public/data/`
+3. ✅ Run `npm install langchain openai`
+4. ✅ Run `npm start`
+5. 🔄 Optional: Add streaming responses for real-time typing
+6. 🔄 Optional: Implement vector database (Pinecone) for production
+
+**Happy chatting! 🎉**
+# Langchain RAG Setup Guide
+
+## Overview
+This portfolio chat application uses Langchain for Retrieval-Augmented Generation (RAG). It reads your portfolio data from `src/data/` folder and uses it to provide context-aware responses via an LLM. **All processing happens client-side in the browser!**
+
+## Architecture
+```
+React Frontend
+ ↓
+ChatAPIClient (src/services/chatAPIClient.js)
+ ↓
+RAG Service (src/services/ragService.js)
+ ↓
+Langchain (in-browser)
+ ├── OpenAI Embeddings (text-embedding-ada-002)
+ ├── MemoryVectorStore (in-memory vector DB)
+ └── RetrievalQAChain (retrieval + LLM generation)
+ ↓
+OpenAI API
+```
+
+## Prerequisites
+- Node.js 16+ and npm
+- OpenAI API key (get one at https://platform.openai.com/api-keys)
+
+## Setup Steps
+### Step 1: Frontend Configuration
+Create `.env.local` in project root:
+```
+REACT_APP_OPENAI_API_KEY=sk-...your_api_key...
+REACT_APP_LLM_MODEL=gpt-3.5-turbo
+REACT_APP_RAG_ENABLED=true
+```
+### Step 2: Install Dependencies
+```bash
+npm install
+npm install langchain openai
+```
+### Step 3: Portfolio Data
+Ensure your data files are in both locations:
+- **Source**: `src/data/site_data.json` (for development)
+- **Serve**: `public/data/site_data.json` (for browser access - copy from src/data)
+
+**Example site_data.json structure:**
+```json
+{
+ "name": "Gauransh Sawhney",
+ "title": "Software Development Engineer",
+ "background": "Wireless Communications & Development",
+ "experience": [
+ {
+ "company": "Company Name",
+ "role": "SDE II",
+ "duration": "2020 - Present",
+ "description": "..."
+ }
+ ],
+ "skills": ["Python", "React", "Wireless Systems", "..."],
+ "projects": [...]
+}
+```
+### Step 4: Run Application
+```bash
+npm start
+```
+Opens http://localhost:3000
+
+**That's it! No backend server needed.** ✨
+
+## How RAG Works
+
+1. **Load**: First message triggers `ragService.initialize()`
+2. **Fetch**: Portfolio data loaded from `public/data/site_data.json`
+3. **Embed**: Document text converted to vectors using OpenAI embeddings
+4. **Store**: Vectors stored in in-memory MemoryVectorStore
+5. **Retrieve**: User query embedded and matched against documents
+6. **Generate**: LLM receives query + relevant context to generate response
+
+Example flow:
+```
+User: "What's your experience with wireless systems?"
+ ↓
+Retrieve: Finds relevant experience/project sections
+ ↓
+Prompt: "Based on: [portfolio context], answer: What's your experience with wireless systems?"
+ ↓
+Response: "I have 5+ years in wireless communications including..."
+```
+
+## Troubleshooting
+### "REACT_APP_OPENAI_API_KEY not found"
+- Create `.env.local` file in project root
+- Add your OpenAI API key
+- Restart `npm start` to reload environment variables
+### "API error: 401"
+- Verify API key in `.env.local` is correct
+- Ensure API key has available credits
+### "RAG not initialized"
+- Check browser console for Langchain initialization errors
+- Ensure `public/data/site_data.json` exists
+- Verify JSON is valid format
+### "Network error fetching site_data.json"
+- Copy `src/data/site_data.json` to `public/data/site_data.json`
+- Browser can only access files in `public/` folder
+- Restart dev server after copying files
+### Long initial delay on first message
+- Normal! Langchain initializes embeddings (~2-3 seconds)
+- Subsequent messages are faster (cached embeddings)
+
+## Customization
+### Change LLM Model
+In `.env.local`:
+```
+REACT_APP_LLM_MODEL=gpt-4
+```
+### Disable RAG (use base LLM only)
+In `.env.local`:
+```
+REACT_APP_RAG_ENABLED=false
+```
+### Add More Data Sources
+1. Add `.json` or `.txt` files to `src/data/`
+2. Copy to `public/data/`
+3. Restart dev server
+4. Data automatically loaded on next chat message
+
+## Security Notes
+
+⚠️ **API Key Exposure**: REACT_APP_OPENAI_API_KEY is exposed in browser code
+- This is fine for personal/portfolio projects
+- For production with real traffic, use a backend proxy to hide the key
+- Implement rate limiting and cost controls on backend
+
+⚠️ **Never commit `.env.local`**: Add to `.gitignore`
+- API keys should only be in local environment
+- For production, use deployment platform's environment variables (Vercel, Netlify, etc.)
+
+## Browser Compatibility
+
+- ✅ Chrome 90+
+- ✅ Firefox 88+
+- ✅ Safari 14+
+- ❌ IE 11 (not supported)
+
+Langchain requires modern JavaScript features (ES2020+).
+
+## Performance Considerations
+
+- **First message**: ~2-3s (initializing embeddings)
+- **Subsequent messages**: ~1-2s (API call + response)
+- **Memory usage**: Depends on portfolio size (usually <50MB)
+- **Bundle size**: Langchain adds ~800KB to bundle (gzipped)
+
+For production optimization:
+- Consider service worker caching for embeddings
+- Implement streaming responses for perceived speed
+- Use Vercel Edge Functions or Cloudflare Workers for cost optimization
+
+## Next Steps
+
+1. ✅ Fill in `.env.local` with your OpenAI API key
+2. ✅ Copy portfolio data to `public/data/`
+3. ✅ Run `npm start`
+## Next Steps
+
+1. ✅ Fill in `.env.local` with your OpenAI API key
+2. ✅ Copy portfolio data to `public/data/`
+3. ✅ Run `npm start`
+4. ✅ Test with suggestion chips or free-form questions
+5. 🔄 Optional: Add streaming responses for real-time typing
+6. 🔄 Optional: Integrate vector database (Pinecone) for production scale
+
+**Happy chatting! 🎉**
+# Portfolio Chat
+
+An interactive AI-powered portfolio with a client-side RAG chatbot. Ask questions about my projects, experience, and skills—no backend required.
+
+## ✨ Features
+
+- **AI Chat Assistant** powered by OpenAI GPT
+- **Smart Navigation** - Auto-scrolls to relevant sections based on your questions
+- **Client-Side RAG** - Binary-indexed retrieval for instant responses
+- **Dark/Light Themes** with system preference detection
+- **Fully Responsive** - Mobile-first design
+
+## 🚀 Quick Start
+
+```bash
+# Install
+npm install
+
+# Configure
+echo "REACT_APP_OPENAI_API_KEY=sk-..." > .env.local
+
+# Run
+npm start
+```
+
+Opens at http://localhost:3000
+
+## 🏗️ Tech Stack
+
+- **React 19** - UI framework
+- **Langchain + OpenAI API** - RAG chatbot (text-embedding-3-large + GPT-3.5/4)
+- **Binary Vector Index** - Custom Float32 storage for fast retrieval
+- **CSS Variables** - Theme system (no CSS-in-JS)
+
+## 📂 Key Files
+
+- `src/services/ragService.js` - RAG engine with binary index retrieval
+- `src/components/ChatHistory.js` - Message display + action tag parser
+- `public/data/resume.json` - Portfolio content (single source of truth)
+- `public/rag/` - Binary index assets (meta.json, vectors.f32, texts.txt)
+
+## 🎨 Customization
+
+Edit `public/data/resume.json` to update:
+- Experience, education, projects, skills
+- Contact info and social links
+- Certifications
+
+Theme colors in `src/index.css`:
+```css
+- Experience, education, projects, skills
+- Contact info and social links
+- Certifications
+
+Theme colors in `src/index.css`:
+```css
+:root[data-theme="dark"] {
+ --primary: #22D3EE; /* Neon cyan */
+}
+```
+
+## 📱 Deployment
+
+```bash
+# Build
+npm run build
+
+# Deploy ./build folder to Vercel, Netlify, or GitHub Pages
+```
+
+Set `REACT_APP_OPENAI_API_KEY` in your deployment platform's environment variables.
+
+---
+
+**Author:** Gauransh Sawhney
+**Contact:** [gauransh30@gmail.com](mailto:gauransh30@gmail.com)
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta
+      name="description"
+      content="Web site created using create-react-app"
+    />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <!--
+      manifest.json provides metadata used when your web app is installed on a
+      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
+    -->
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <!--
+      Notice the use of %PUBLIC_URL% in the tags above.
+      It will be replaced with the URL of the `public` folder during the build.
+      Only files inside the `public` folder can be referenced from the HTML.
+
+      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
+      work correctly both with client-side routing and a non-root public URL.
+      Learn how to configure a non-root public URL by running `npm run build`.
+    -->
+    <title>Gauransh Sawhney</title>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <!--
+      This HTML file is a template.
+</head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <!--
+      This HTML file is a template.
+      If you open it directly in the browser, you will see an empty page.
+
+      You can add webfonts, meta tags, or analytics to this file.
+      The build step will place the bundled scripts into the <body> tag.
+
+      To begin the development, run `npm start` or `yarn start`.
+      To create a production bundle, use `npm run build` or `yarn build`.
+    -->
+  </body>
+</html>
+PATH: server.js
+LINES: 1-14
+
+/**
+ * DEPRECATED: Backend Server Not Required
+ * 
+ * As of the client-side Langchain implementation, this file is no longer needed.
+ * Langchain RAG runs entirely in the browser using:
+ * - src/services/ragService.js (Langchain chain initialization)
+ * - src/services/chatAPIClient.js (Client-side API client)
+ * 
+ * Just run: npm start
+ * 
+ * No backend server required! 🎉
+ */
+
+console.log('ℹ️ This file is deprecated. Langchain now runs client-side.');
+PATH: src/App.js
+LINES: 1-17
+
+import React, { useState, useEffect, useRef } from 'react';
+import './App.css';
+import { Analytics } from '@vercel/analytics/react';
+import TopNav from './components/TopNav';
+import ChatHistory from './components/ChatHistory';
+import InputArea from './components/InputArea';
+import SuggestionChips from './components/SuggestionChips';
+
+import chatAPIClient from './services/chatAPIClient';
+
+import AboutMe from './pages/AboutMe';
+import Education from './pages/Education';
+import Experience from './pages/Experience';
+import Projects from './pages/Projects';
+import Certifications from './pages/Certifications';
+import ContactMe from './pages/ContactMe';
+PATH: src/App.js
+LINES: 18-45
+
+/* ===== Custom Hook: useInputNudge ===== */
+const useInputNudge = () => {
+  const [showNudge, setShowNudge] = useState(false);
+  const inputRef = useRef(null);
+  const nudgeTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    // Check if nudge has already been shown in this session
+    const hasShownNudge = sessionStorage.getItem('inputNudgeShown');
+
+    // Check if user prefers reduced motion
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (hasShownNudge || prefersReducedMotion) {
+      return;
+    }
+
+    // Set nudge to show after 800ms
+    nudgeTimeoutRef.current = setTimeout(() => {
+      setShowNudge(true);
+      sessionStorage.setItem('inputNudgeShown', 'true');
+
+      // Stop nudge after 1s
+      setTimeout(() => {
+        setShowNudge(false);
+      }, 1000);
+    }, 800);
+PATH: src/App.js
+LINES: 46-73
+
+// Handle early stop: clear nudge on input focus or typing
+    const handleInputFocus = () => {
+      if (nudgeTimeoutRef.current) {
+        clearTimeout(nudgeTimeoutRef.current);
+      }
+      setShowNudge(false);
+      sessionStorage.setItem('inputNudgeShown', 'true');
+    };
+
+    // Add listeners to textarea if it exists
+    const inputElement = inputRef.current?.querySelector('.chat-input-area');
+    if (inputElement) {
+      inputElement.addEventListener('focus', handleInputFocus);
+      inputElement.addEventListener('input', handleInputFocus);
+    }
+
+    return () => {
+      if (inputElement) {
+        inputElement.removeEventListener('focus', handleInputFocus);
+        inputElement.removeEventListener('input', handleInputFocus);
+      }
+      if (nudgeTimeoutRef.current) {
+        clearTimeout(nudgeTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  return { showNudge, inputRef };
+PATH: src/App.js
+LINES: 74-117
+
+};
+
+const App = () => {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [isDarkMode, setIsDarkMode] = useState(true); // Default dark
+  const [resumeData, setResumeData] = useState(null);
+
+  // Use the nudge hook
+  const { showNudge, inputRef } = useInputNudge();
+
+  const suggestions = [
+    { label: "Is Gauransh a good fit for my role?", icon: "💼" },
+    { label: "Summarize Gauransh's resume", icon: "📄" },
+    { label: "How can I contact Gauransh?", icon: "📬" }
+  ];
+
+  // Initialize theme from localStorage or system preference
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+      setIsDarkMode(savedTheme === 'dark');
+      document.documentElement.dataset.theme = savedTheme;
+    } else {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setIsDarkMode(prefersDark);
+      document.documentElement.dataset.theme = prefersDark ? 'dark' : 'light';
+    }
+  }, []);
+
+  // Update data-theme and localStorage when isDarkMode changes
+  useEffect(() => {
+    const theme = isDarkMode ? 'dark' : 'light';
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('theme', theme);
+  }, [isDarkMode]);
+
+  useEffect(() => {
+    fetch('/data/resume.json') 
+      .then(res => res.json())
+      .then(data => setResumeData(data))
+      .catch(err => console.error("Failed to load resume data:", err));
+PATH: src/App.js
+LINES: 118-163
+
+}, []);
+
+  const handleSend = (text) => {
+    if (!text.trim() || isLoading) return;
+    
+    // Add user message immediately
+    setMessages(prev => [...prev, { text, sender: 'user' }]);
+    setInput('');
+    setIsLoading(true);
+    setError(null);
+
+    const conversationHistory = messages.map(msg => ({
+      role: msg.sender === 'user' ? 'user' : 'assistant',
+      content: msg.text
+    }));
+
+    chatAPIClient.sendMessage(text, conversationHistory)
+        .then(reply => {
+           setIsLoading(false);
+           setMessages(prev => [...prev, { text: reply, sender: 'bot' }]);
+        })
+        .catch(err => {
+            setIsLoading(false);
+            setError(err.message);
+        });
+  };
+
+  // We no longer need handleCloseChat because the chat is inline/permanent
+
+  return (
+    <div className="app-container appBackground">
+      <TopNav isDarkMode={isDarkMode} onToggleTheme={() => setIsDarkMode(!isDarkMode)} />
+
+      <main className="main-content">
+        
+        {/* 1. HERO / LANDING AREA */}
+        <div className="landing-wrapper">
+          
+          {/* Header Section */}
+          <AboutMe resumeData={resumeData} />
+          
+          {/* INLINE CHAT AREA: Only renders if there are messages */}
+          {messages.length > 0 && (
+            <div className="inline-chat-container">
+              <ChatHistory 
+                messages={messages}
+PATH: src/App.js
+LINES: 164-197
+
+isLoading={isLoading} 
+                // No onClose needed for inline
+              />
+            </div>
+          )}
+          
+          {/* Input Section */}
+          <div className={`input-wrapper${showNudge ? ' input-nudge' : ''}`} ref={inputRef}>
+             <InputArea input={input} onInputChange={setInput} onSend={handleSend} disabled={isLoading} />
+          </div>
+          
+          {/* Chips */}
+          <SuggestionChips suggestions={suggestions} onChipClick={handleSend} disabled={isLoading} />
+          
+          {error && <div className="error-message">{error}</div>}
+        </div>
+
+        {/* 2. SCROLLABLE SECTIONS */}
+        {resumeData && (
+          <>
+            <Experience resumeExperience={resumeData.experience} />
+            <Projects resumeProjects={resumeData.projects} />
+            <Education resumeEducation={resumeData.education} />
+            <Certifications resumeCertifications={resumeData.certifications} />
+            <ContactMe socialLinks={resumeData.socials} />
+          </>
+        )}
+      </main>
+      <Analytics />
+    </div>
+  );
+};
+
+export default App;
+PATH: src/App.test.js
+LINES: 1-8
+
+import { render, screen } from '@testing-library/react';
+import App from './App';
+
+test('renders learn react link', () => {
+  render(<App />);
+  const linkElement = screen.getByText(/learn react/i);
+  expect(linkElement).toBeInTheDocument();
+});
+PATH: src/components/ChatHistory.js
+LINES: 1-1
+
+/* src/components/ChatHistory.js */
+PATH: src/components/ChatHistory.js
+LINES: 2-19
+
+import React, { useEffect, useRef } from 'react';
+
+const ChatHistory = ({ messages, isLoading, chatEndRef, onCloseChat }) => {
+
+  const containerRef = useRef(null);
+
+  // 2. Auto-scroll to bottom whenever messages or loading state changes
+  useEffect(() => {
+    if (containerRef.current) {
+      const { scrollHeight, clientHeight } = containerRef.current;
+      // This sets the scroll position to the very bottom immediately
+      containerRef.current.scrollTop = scrollHeight - clientHeight;
+      
+      // Optional: If you want it smooth, use this instead:
+      containerRef.current.scrollTo({ top: scrollHeight, behavior: 'smooth' });
+    }
+  }, [messages, isLoading]);
+PATH: src/components/ChatHistory.js
+LINES: 20-34
+
+// --- HANDLER FACTORY: Create scroll handlers to avoid repetition ---
+  const createScrollHandler = (sectionId) => () => {
+    if (onCloseChat) onCloseChat();
+    setTimeout(() => {
+      document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' });
+    }, 300);
+  };
+
+  // const handleScrollToAbout = createScrollHandler('about-me');
+  const handleScrollToEducation = createScrollHandler('education');
+  const handleScrollToExperience = createScrollHandler('experience');
+  const handleScrollToProjects = createScrollHandler('projects');
+  const handleScrollToCertifications = createScrollHandler('certifications');
+  const handleScrollToContact = createScrollHandler('contact');
+PATH: src/components/ChatHistory.js
+LINES: 35-41
+
+// --- FORMATTER 1: Parse Bold Text (**text**) ---
+  const parseBold = (text) => {
+    return text.split('**').map((part, index) => {
+      return index % 2 === 1 ? <strong key={index}>{part}</strong> : part;
+    });
+  };
+PATH: src/components/ChatHistory.js
+LINES: 42-73
+
+// --- FORMATTER 2: Parse Links ([text](url)) THEN Bold ---
+  const parseFormattedText = (text) => {
+    // Regex matches [label](url)
+    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    const parts = text.split(linkRegex); 
+    
+    const result = [];
+    for (let i = 0; i < parts.length; i += 3) {
+      // 1. Handle plain text
+      if (parts[i]) {
+        result.push(<React.Fragment key={`text-${i}`}>{parseBold(parts[i])}</React.Fragment>);
+      }
+      // 2. Handle link
+      if (i + 1 < parts.length) {
+        const label = parts[i+1];
+        const url = parts[i+2];
+        result.push(
+          <a 
+            key={`link-${i}`} 
+            href={url} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="chat-link"
+          >
+            {label}
+          </a>
+        );
+      }
+    }
+    return result;
+  };
+PATH: src/components/ChatHistory.js
+LINES: 74-118
+
+// --- FORMATTER 3: Main Layout (Newlines, Bullets, Lists) ---
+  const formatMessage = (text) => {
+    return text.split('\n').map((line, i) => {
+      const trimmed = line.trim();
+      if (!trimmed) return <div key={i} style={{ height: '8px' }} />; // Paragraph break
+
+      // Detect Bullet Points (*, -, •)
+      const isBullet = /^[•*-]\s/.test(trimmed);
+      
+      // Detect Numbered Lists (1., 2., 10.)
+      const isNumbered = /^\d+\.\s/.test(trimmed);
+
+      if (isBullet) {
+        const cleanLine = trimmed.replace(/^[•*-]\s+/, '');
+        return (
+          <div key={i} className="chat-list-item bullet">
+            <span className="list-marker">•</span>
+            <span>{parseFormattedText(cleanLine)}</span>
+          </div>
+        );
+      }
+
+      if (isNumbered) {
+        const match = trimmed.match(/^(\d+\.)\s+(.*)/);
+        if (match) {
+          const number = match[1];
+          const content = match[2];
+          return (
+            <div key={i} className="chat-list-item numbered">
+              <span className="list-marker">{number}</span>
+              <span>{parseFormattedText(content)}</span>
+            </div>
+          );
+        }
+      }
+
+      // Standard Line
+      return (
+        <div key={i} className="chat-paragraph">
+          {parseFormattedText(line)}
+        </div>
+      );
+    });
+  };
+PATH: src/components/ChatHistory.js
+LINES: 119-155
+
+// --- RENDERER: Combines Logic + Formatting ---
+  const renderMessageContent = (text) => {
+    // 1. Detect Actions (Check your original tags)
+    
+    const hasEducationAction = text.includes("ACTION:SCROLL_EDUCATION");
+    const hasExperienceAction = text.includes("ACTION:SCROLL_EXPERIENCE");
+    const hasProjectsAction = text.includes("ACTION:SCROLL_PROJECTS");
+    const hasCertificationsAction = text.includes("ACTION:SCROLL_CERTIFICATIONS");
+    const hasContactAction = text.includes("ACTION:SCROLL_CONTACT");
+
+    // 2. Clean Tags (Remove all action tags using Regex)
+    let cleanText = text
+      .replace(/<?<?ACTION:SCROLL_[A-Z_]+>?>?/g, "") 
+      .trim();
+
+    return (
+      <div className="message-content">
+        {/* Render Formatted Text */}
+        <div className="text-wrapper">
+          {formatMessage(cleanText)}
+        </div>
+        
+        {/* Render Original Buttons */}
+        {/* {hasAboutAction && (
+          <button className="chat-action-btn" onClick={handleScrollToAbout}>
+            👇 Read more in About Me section
+          </button>
+        )} */}
+
+        {hasEducationAction && (
+          <button className="chat-action-btn" onClick={handleScrollToEducation}>
+            🎓 View Education Details
+          </button>
+        )}
+
+        {hasExperienceAction && (
+          <button className="chat-action-btn" onClick={handleScrollToExperience}>
+PATH: src/components/ChatHistory.js
+LINES: 156-199
+
+💼 View Work History
+          </button>
+        )}
+
+        {hasProjectsAction && (
+          <button className="chat-action-btn" onClick={handleScrollToProjects}>
+            🚀 View Projects
+          </button>
+        )}
+
+        {hasCertificationsAction && (
+          <button className="chat-action-btn" onClick={handleScrollToCertifications}>
+            📜 View Certifications
+          </button>
+        )}
+
+        {hasContactAction && (
+          <button className="chat-action-btn" onClick={handleScrollToContact}>
+             📬 Get In Touch
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="chat-history" ref={containerRef}>
+      {messages.map((msg, idx) => (
+        <div key={idx} className={`message ${msg.sender}`}>
+          {/* Bot messages get parsed, User messages are plain text */}
+          {msg.sender === 'bot' ? renderMessageContent(msg.text) : msg.text}
+        </div>
+      ))}
+      {isLoading && (
+        <div className="message bot">
+          <span className="typing-indicator">Thinking...</span>
+        </div>
+      )}
+      <div ref={chatEndRef} />
+    </div>
+  );
+};
+
+export default ChatHistory;
+PATH: src/components/InputArea.js
+LINES: 1-4
+
+import React, { useState } from 'react';
+
+const InputArea = ({ input, onInputChange, onSend, disabled }) => {
+  const [isTyping, setIsTyping] = useState(false);
+PATH: src/components/InputArea.js
+LINES: 5-13
+
+const typingTimeoutRef = React.useRef(null);
+  
+  const handleKeyDown = (e) => {
+    // If Enter is pressed WITHOUT Shift -> Send Message
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault(); // Prevents creating a new line
+      onSend(input);
+    }
+    // If Enter IS pressed WITH Shift -> Do nothing (let browser insert new line)
+PATH: src/components/InputArea.js
+LINES: 14-61
+
+};
+
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    onInputChange(value);
+    
+    // Set typing state
+    setIsTyping(true);
+    
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    
+    // Reset typing state after 1 second of inactivity
+    typingTimeoutRef.current = setTimeout(() => {
+      setIsTyping(false);
+    }, 1000);
+  };
+
+  return (
+    <div className={`input-wrapper console-input${isTyping ? ' is-typing' : ''}`}>
+      <textarea
+        className="chat-input-area"
+        value={input}
+        onChange={handleInputChange}
+        onKeyDown={handleKeyDown}
+        placeholder="Type a message..."
+        disabled={disabled}
+        rows={1} // Starts as a single line
+      />
+      <button
+        className="console-send-btn"
+        onClick={() => onSend(input)}
+        disabled={disabled || !input.trim()}
+        aria-label="Send message"
+        title="Send (Enter)"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+          <path d="M4 12L20 4l-4.5 16-3.5-5-5-3.5z" fill="currentColor" opacity="0.12" />
+          <path d="M4 12L20 4l-4.5 16-3.5-5-5-3.5z" />
+        </svg>
+      </button>
+    </div>
+  );
+};
+
+export default InputArea;
+PATH: src/components/SectionHeader.js
+LINES: 1-13
+
+import React from 'react';
+
+const SectionHeader = ({ title, className = '' }) => {
+  return (
+    <div className={`sectionHeaderGroup ${className}`}>
+      <div className="sectionHeader">
+        <h2 className="sectionTitle">{title}</h2>
+      </div>
+    </div>
+  );
+};
+
+export default SectionHeader;
+PATH: src/components/SuggestionChips.js
+LINES: 1-21
+
+import React from 'react';
+
+const SuggestionChips = ({ suggestions, onChipClick, disabled }) => {
+  return (
+    <div className="suggestions-row">
+      {suggestions.map((chip, idx) => (
+        <button
+          key={idx}
+          className="chip"
+          onClick={() => onChipClick(chip.label)}
+          disabled={disabled}
+        >
+          <span className="chip-icon">{chip.icon}</span>
+          {chip.label}
+        </button>
+      ))}
+    </div>
+  );
+};
+
+export default SuggestionChips;
+PATH: src/components/TopNav.js
+LINES: 1-2
+
+import React, { useEffect, useState, useRef } from 'react';
+PATH: src/components/TopNav.js
+LINES: 3-12
+
+const sectionIds = ['about-me', 'experience', 'projects', 'education', 'certifications', 'contact'];
+
+const TopNav = ({ isDarkMode, onToggleTheme }) => {
+  const [activeSection, setActiveSection] = useState('about-me');
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isManualNavigation, setIsManualNavigation] = useState(false);
+  const navLinksRef = useRef(null);
+  const manualNavTimeoutRef = useRef(null);
+
+  // Detect scroll for nav background blur enhancement
+PATH: src/components/TopNav.js
+LINES: 13-60
+
+useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (manualNavTimeoutRef.current) {
+        clearTimeout(manualNavTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // Skip if user is manually navigating
+        if (isManualNavigation) return;
+
+        const visibleEntries = entries.filter((entry) => entry.isIntersecting);
+        if (visibleEntries.length > 0) {
+          visibleEntries.sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+          setActiveSection(visibleEntries[0].target.id);
+        }
+      },
+      {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0.2,
+      }
+    );
+
+    const elements = sectionIds
+      .map((id) => document.getElementById(id))
+      .filter(Boolean);
+
+    elements.forEach((el) => observer.observe(el));
+
+    return () => observer.disconnect();
+  }, [isManualNavigation]);
+
+  // Fallback: on scroll, set active section based on closest section to viewport top
+  useEffect(() => {
+PATH: src/components/TopNav.js
+LINES: 61-101
+
+let ticking = false;
+
+    const handleScroll = () => {
+      // Skip if user is manually navigating
+      if (isManualNavigation) return;
+
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        ticking = false;
+        const sections = sectionIds
+          .map((id) => {
+            const el = document.getElementById(id);
+            if (!el) return null;
+            const rect = el.getBoundingClientRect();
+            return { id, top: rect.top };
+          })
+          .filter(Boolean);
+
+        // Choose the section whose top is closest to viewport top but not below 70% viewport
+        const viewportGuard = window.innerHeight * 0.7;
+        let best = sections[0];
+        sections.forEach((s) => {
+          if (s.top < viewportGuard) {
+            if (!best || Math.abs(s.top) < Math.abs(best.top)) {
+              best = s;
+            }
+          }
+        });
+
+        if (best && best.id !== activeSection) {
+          setActiveSection(best.id);
+        }
+      });
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [activeSection, isManualNavigation]);
+
+  // Update highlighter position when active section changes
+PATH: src/components/TopNav.js
+LINES: 102-136
+
+useEffect(() => {
+    const updatePillPosition = () => {
+      if (navLinksRef.current) {
+        const activeLink = navLinksRef.current.querySelector('.nav-link.active');
+        if (activeLink) {
+          const rect = activeLink.getBoundingClientRect();
+          const containerRect = navLinksRef.current.getBoundingClientRect();
+          const offsetLeft = rect.left - containerRect.left;
+          navLinksRef.current.style.setProperty('--pill-left', `${offsetLeft}px`);
+          navLinksRef.current.style.setProperty('--pill-width', `${rect.width}px`);
+        }
+      }
+    };
+
+    // run after paint
+    requestAnimationFrame(updatePillPosition);
+  }, [activeSection]);
+
+  // Initialize pill position on mount
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      if (navLinksRef.current) {
+        const activeLink = navLinksRef.current.querySelector('.nav-link.active');
+        if (activeLink) {
+          const rect = activeLink.getBoundingClientRect();
+          const containerRect = navLinksRef.current.getBoundingClientRect();
+          const offsetLeft = rect.left - containerRect.left;
+          navLinksRef.current.style.setProperty('--pill-left', `${offsetLeft}px`);
+          navLinksRef.current.style.setProperty('--pill-width', `${rect.width}px`);
+        }
+      }
+    });
+  }, []);
+  // Initialize pill position on mount
+  useEffect(() => {
+PATH: src/components/TopNav.js
+LINES: 137-157
+
+const timer = setTimeout(() => {
+      if (navLinksRef.current) {
+        const activeLink = navLinksRef.current.querySelector('.nav-link.active');
+        console.log('Initial mount - checking active link:', activeLink);
+        if (activeLink) {
+          const rect = activeLink.getBoundingClientRect();
+          const containerRect = navLinksRef.current.getBoundingClientRect();
+          const offsetLeft = rect.left - containerRect.left;
+          
+          console.log('Initial mount - setting pill:', { offsetLeft, width: rect.width });
+          
+          navLinksRef.current.style.setProperty('--pill-left', `${offsetLeft}px`);
+          navLinksRef.current.style.setProperty('--pill-width', `${rect.width}px`);
+        }
+      }
+    }, 200);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Recalculate on window resize for responsive behavior
+PATH: src/components/TopNav.js
+LINES: 158-174
+
+useEffect(() => {
+    const handleResize = () => {
+      if (navLinksRef.current) {
+        const activeLink = navLinksRef.current.querySelector('.nav-link.active');
+        if (activeLink) {
+          const rect = activeLink.getBoundingClientRect();
+          const containerRect = navLinksRef.current.getBoundingClientRect();
+          const offsetLeft = rect.left - containerRect.left;
+          
+          navLinksRef.current.style.setProperty('--pill-left', `${offsetLeft}px`);
+          navLinksRef.current.style.setProperty('--pill-width', `${rect.width}px`);
+        }
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+PATH: src/components/TopNav.js
+LINES: 175-218
+
+}, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const navItems = [
+    { id: 'about-me', label: 'About' },
+    { id: 'experience', label: 'Experience' },
+    { id: 'projects', label: 'Projects' },
+    { id: 'education', label: 'Education' },
+    { id: 'certifications', label: 'Certifications' },
+    { id: 'contact', label: 'Contact' },
+  ];
+
+  return (
+    <nav className={`top-nav ${isScrolled ? 'is-scrolled' : ''}`}>
+      <span
+        className="logo"
+        onClick={scrollToTop}
+        role="button"
+        tabIndex="0"
+        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && scrollToTop()}
+        title="Scroll to top"
+      >
+        gs
+      </span>
+      <div className="nav-links" ref={navLinksRef}>
+        {navItems.map((item) => (
+          <a
+            key={item.id}
+            href={`#${item.id}`}
+            className={`nav-link ${activeSection === item.id ? 'active' : ''}`}
+            aria-current={activeSection === item.id ? 'page' : undefined}
+            onClick={(e) => {
+              // Override automatic tracking during manual navigation
+              setActiveSection(item.id);
+              setIsManualNavigation(true);
+
+              // Clear any previous timeout
+              if (manualNavTimeoutRef.current) {
+                clearTimeout(manualNavTimeoutRef.current);
+              }
+PATH: src/components/TopNav.js
+LINES: 219-253
+
+// Re-enable tracking after scroll completes (800ms for smooth scroll)
+              manualNavTimeoutRef.current = setTimeout(() => {
+                setIsManualNavigation(false);
+              }, 800);
+            }}
+          >
+            {item.label}
+          </a>
+        ))}
+      </div>
+      <button
+        className="theme-toggle"
+        onClick={onToggleTheme}
+        aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+        aria-pressed={isDarkMode}
+        title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+        type="button"
+      >
+        {isDarkMode ? (
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" fill="currentColor" opacity="0.18" />
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="12" cy="12" r="5.5" fill="currentColor" opacity="0.18" />
+            <circle cx="12" cy="12" r="5.5" />
+            <path d="M12 2.5v2.5m0 14v2.5m9-9h-2.5m-14 0H2.5m15.01-6.51-1.77 1.77M8.26 17.74l-1.77 1.77m12.02 0-1.77-1.77M8.26 6.26 6.49 4.49" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          </svg>
+        )}
+      </button>
+    </nav>
+  );
+};
+PATH: src/components/TopNav.js
+LINES: 254-254
+
+export default TopNav;
+PATH: src/index.js
+LINES: 1-17
+
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import './index.css';
+import App from './App';
+import reportWebVitals from './reportWebVitals';
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+
+// If you want to start measuring performance in your app, pass a function
+// to log results (for example: reportWebVitals(console.log))
+// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
+reportWebVitals();
+PATH: src/pages/AboutMe.js
+LINES: 1-1
+
+import React, { useState, useEffect } from 'react';
+PATH: src/pages/AboutMe.js
+LINES: 2-62
+
+import './AboutMe.css';
+
+const AboutMe = ({ resumeData }) => {
+  const name = resumeData?.basic_info?.name || "Gauransh Sawhney";
+  // The full text we want to type out
+  const fullText = `Hi, I'm ${name}.`;
+  
+  const [typedText, setTypedText] = useState('');
+
+  useEffect(() => {
+    let index = 0;
+    const typeInterval = setInterval(() => {
+      if (index <= fullText.length) {
+        setTypedText(fullText.slice(0, index));
+        index++;
+      } else {
+        clearInterval(typeInterval);
+      }
+    }, 100); // Speed: 100ms per character
+
+    return () => clearInterval(typeInterval);
+  }, [fullText]);
+
+  const role = resumeData?.basic_info?.role || "Full Stack Engineer";
+
+  return (
+    <section id="about-me" className="hero-section-clean">
+      <div className="hero-content">
+        
+        {/* 1. Typewriter Headline */}
+        <h1 className="hero-title">
+          {typedText}<span className="cursor">|</span>
+        </h1>
+        
+        {/* 2. Sub-headline */}
+        <h2 className="hero-subtitle">
+          {role} & AI Researcher
+        </h2>
+
+        {/* 3. The "Chat Prompt" Line */}
+        <div className="ai-prompt-wrapper">
+          <p className="ai-prompt-text">
+            Chat with an AI trained on my codebase, projects, and research.
+            <br />
+            <strong>Ask questions about my work below.</strong>
+          </p>
+          
+          {/* 4. Visual Cue (Animated Arrow) */}
+          <div className="arrow-indicator">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14M19 12l-7 7-7-7"/>
+            </svg>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  );
+};
+
+export default AboutMe;
+PATH: src/pages/Certifications.js
+LINES: 1-2
+
+import React from 'react';
+import './Certifications.css';
+PATH: src/pages/Certifications.js
+LINES: 3-5
+
+import SectionHeader from '../components/SectionHeader';
+
+const Certifications = ({ resumeCertifications = [] }) => {
+PATH: src/pages/Certifications.js
+LINES: 6-10
+
+if (!resumeCertifications || resumeCertifications.length === 0) return null;
+
+  const extractYear = (dateStr) => {
+    const match = dateStr.match(/(\d{4})/);
+    return match ? match[1] : dateStr;
+PATH: src/pages/Certifications.js
+LINES: 11-23
+
+};
+
+  const extractBadgeText = (organization) => {
+    // Extract 1–2 letter badge from organization name
+    if (!organization) return '?';
+    const cleaned = organization.trim().toUpperCase();
+    // Prefer first 2 letters; fallback to first letter
+    if (cleaned.length >= 2) {
+      return cleaned.substring(0, 2);
+    }
+    return cleaned.charAt(0);
+  };
+PATH: src/pages/Certifications.js
+LINES: 24-72
+
+// Inline external link SVG icon
+  const ExternalLinkIcon = () => (
+    <svg className="cert-external-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
+  );
+
+  return (
+    <section id="certifications" className="section certifications-section">
+      <div className="container certifications-container">
+        <SectionHeader title="Licenses & Certifications" />
+
+        <div className="certifications-grid">
+          {resumeCertifications.map((cert, index) => (
+            <a
+              key={index}
+              href={cert.url || '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="cert-chip"
+              title={cert.title}
+            >
+              {/* Badge */}
+              <div className="cert-badge">
+                {extractBadgeText(cert.organization)}
+              </div>
+
+              {/* Content: Title + Organization */}
+              <div className="cert-content">
+                <div className="cert-title">{cert.title}</div>
+                <div className="cert-organization">{cert.organization}</div>
+              </div>
+
+              {/* Year + External Icon */}
+              <div className="cert-meta">
+                <div className="cert-year">{extractYear(cert.date)}</div>
+                <ExternalLinkIcon />
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default Certifications;
+PATH: src/pages/ContactMe.js
+LINES: 1-2
+
+import React, { useState } from 'react';
+import './ContactMe.css';
+PATH: src/pages/ContactMe.js
+LINES: 3-34
+
+import SectionHeader from '../components/SectionHeader';
+
+const ContactMe = ({ socialLinks }) => {
+  // Initialize hook before any conditional returns
+  const [copied, setCopied] = useState(false);
+
+  if (!socialLinks || socialLinks.length === 0) return null;
+
+  // Extract email from socials if present
+  const emailLink = socialLinks.find(link => link.type === 'email');
+  const emailAddress = emailLink ? emailLink.url.replace('mailto:', '') : null;
+
+  const handleCopy = async () => {
+    if (!emailAddress) return;
+    try {
+      await navigator.clipboard.writeText(emailAddress);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    } catch (err) {
+      // Fallback: select text by creating a temporary textarea
+      const textarea = document.createElement('textarea');
+      textarea.value = emailAddress;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'absolute';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    }
+PATH: src/pages/ContactMe.js
+LINES: 35-41
+
+};
+
+  const handleEmailKeyDown = (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleCopy();
+    }
+PATH: src/pages/ContactMe.js
+LINES: 42-56
+
+};
+
+  const getIcon = (type) => {
+    switch (type.toLowerCase()) {
+      case 'linkedin':
+        return (
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+          </svg>
+        );
+      case 'github':
+        return (
+          <svg viewBox="0 0 24 24" fill="currentColor">
+             <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+          </svg>
+PATH: src/pages/ContactMe.js
+LINES: 57-91
+
+);
+      case 'email':
+        return (
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+          </svg>
+        );
+      default:
+        return (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+          </svg>
+        );
+    }
+  };
+
+  const socialWithoutEmail = socialLinks.filter(link => link.type.toLowerCase() !== 'email');
+  const showEmailLabel = socialWithoutEmail.length > 0;
+
+  return (
+    <section id="contact" className="section contact-section">
+      <div className="container contact-container">
+        <SectionHeader title="Contact Me" />
+
+        <div className="card contact-panel">
+          <p className="contact-pitch">Open to SWE / AI roles — happy to chat.</p>
+
+          {emailAddress && (
+            <div className="email-stack">
+              {showEmailLabel && (
+                <div className="contact-label-muted">Email</div>
+              )}
+              <div
+                className={`email-row-clean ${copied ? 'copied' : ''}`}
+PATH: src/pages/ContactMe.js
+LINES: 92-120
+
+aria-label="Email address (click to copy)"
+                role="button"
+                tabIndex={0}
+                onClick={handleCopy}
+                onKeyDown={handleEmailKeyDown}
+              >
+                <div className="email-text" title={emailAddress}>{emailAddress}</div>
+                <button
+                  type="button"
+                  className={`copy-icon-btn ${copied ? 'copied' : ''}`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    handleCopy();
+                  }}
+                  aria-label={copied ? 'Email copied to clipboard' : 'Copy email to clipboard'}
+                  aria-live="polite"
+                  aria-atomic="true"
+                  title={copied ? 'Copied' : 'Copy email'}
+                >
+                  {copied ? (
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M9.5 16.5 5 12l1.4-1.4 3.1 3.1 7.1-7.2L18 8.1z" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                      <path d="M8 7a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V7Zm-3 3a1 1 0 0 1 1-1h1v2H6v8h9v1a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V10Z" />
+                    </svg>
+                  )}
+                </button>
+PATH: src/pages/ContactMe.js
+LINES: 121-156
+
+<span
+                  className={`copy-feedback ${copied ? 'visible' : ''}`}
+                  aria-live="polite"
+                >
+                  Copied
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div className="contact-row social-row">
+            <div className="contact-label">Find me on</div>
+            <div className="social-icons-wrapper">
+              {socialWithoutEmail.map((link, index) => (
+                <a
+                  key={index}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="icon-button"
+                  aria-label={link.name || link.type}
+                  title={link.name}
+                >
+                  {getIcon(link.type)}
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  );
+};
+
+export default ContactMe;
+PATH: src/pages/Education.js
+LINES: 1-2
+
+import React from 'react';
+import './Education.css';
+PATH: src/pages/Education.js
+LINES: 3-39
+
+import SectionHeader from '../components/SectionHeader';
+
+const Education = ({ resumeEducation }) => {
+  // Guard clause: if data hasn't loaded yet, don't render anything
+  if (!resumeEducation) return null;
+
+  return (
+    <section id="education" className="section education-section">
+      <div className="container education-container">
+        <SectionHeader title="Education" />
+        
+        <div className="education-list">
+          {resumeEducation.map((edu, index) => (
+            <div key={index} className="card education-card">
+              <div className="edu-logo-wrapper">
+                <img src={edu.logoUrl} alt={`${edu.school} logo`} className="edu-logo" />
+              </div>
+              
+              <div className="edu-details">
+                <h3 className="edu-school">{edu.school}</h3>
+                <p className="edu-degree">{edu.degree}</p>
+                <div className="edu-metadata-row">
+                  <span className="edu-gpa-label">GPA</span>
+                  <span className="edu-gpa-value">{edu.gpa}</span>
+                  <span className="edu-separator" aria-hidden="true">•</span>
+                  <span className="edu-date">{edu.date}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default Education;
+PATH: src/pages/Experience.js
+LINES: 1-2
+
+import React from 'react';
+import './Experience.css';
+PATH: src/pages/Experience.js
+LINES: 3-34
+
+import SectionHeader from '../components/SectionHeader';
+
+const Experience = ({ resumeExperience }) => {
+  if (!resumeExperience || resumeExperience.length === 0) return null;
+
+  return (
+    <section id="experience" className="section experience-section">
+      <div className="container experience-container">
+        <SectionHeader title="Experience" />
+        
+        <div className="experience-list">
+          {resumeExperience.map((job, index) => {
+            const isCurrent = index === 0;
+            return (
+              <div key={index} className={`experience-item ${isCurrent ? 'current' : ''}`}>
+                <div className="timeline-col">
+                  <span className="timeline-dot" aria-hidden="true" />
+                </div>
+
+                <div className="card experience-card">
+                  {/* Left Column: Logo */}
+                  <div className="exp-logo-container">
+                    {job.logoUrl ? (
+                      <img src={job.logoUrl} alt={`${job.company} logo`} className="exp-logo" />
+                    ) : (
+                      <div className="exp-logo-fallback">{job.company.charAt(0)}</div>
+                    )}
+                  </div>
+
+                  {/* Right Column: Content */}
+                  <div className="exp-content">
+                    <div className="exp-header">
+PATH: src/pages/Experience.js
+LINES: 35-67
+
+<div className="exp-top-row">
+                        <div className="exp-title-wrapper">
+                          <h3 className="exp-company">{job.company}</h3>
+                          {isCurrent && <span className="current-badge">Current</span>}
+                        </div>
+                        <span className="exp-date">{job.years}</span>
+                      </div>
+                      <div className="exp-role">{job.title}</div>
+                    </div>
+
+                    {job.description && (
+                      <p className="exp-description">{job.description}</p>
+                    )}
+
+                    {job.technologies && job.technologies.length > 0 && (
+                      <div className="exp-tech-stack">
+                        {job.technologies.map((tech, i) => (
+                          <span key={i} className="chip">{tech}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default Experience;
+PATH: src/pages/Projects.js
+LINES: 1-2
+
+import React, { useState } from 'react';
+import './Projects.css';
+PATH: src/pages/Projects.js
+LINES: 3-7
+
+import SectionHeader from '../components/SectionHeader';
+
+const Projects = ({ resumeProjects }) => {
+  const [expandedProjects, setExpandedProjects] = useState({});
+PATH: src/pages/Projects.js
+LINES: 8-42
+
+if (!resumeProjects || resumeProjects.length === 0) return null;
+
+  const toggleExpand = (index) => {
+    setExpandedProjects(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
+  };
+
+  return (
+    <section id="projects" className="section projects-section">
+      <div className="container projects-container">
+        <SectionHeader title="Projects" />
+        
+        <div className="projects-grid">
+          {resumeProjects.map((project, index) => (
+            <div key={index} className={`card project-card ${project.featured ? 'featured' : ''}`}>
+              
+              {/* Top Row: Title + Date */}
+              <div className="project-header">
+                <h3 className="project-title">{project.title}</h3>
+                <span className="project-date">{project.date}</span>
+              </div>
+              
+              {/* Highlight: One-line impact summary */}
+              {project.highlight && (
+                <p className="project-highlight">{project.highlight}</p>
+              )}
+              
+              {/* Body: Clamped Description */}
+              <div className="project-description-wrapper">
+                <p className={`project-description ${expandedProjects[index] ? 'expanded' : ''}`}>
+                  {project.description}
+                </p>
+                {project.description && project.description.length > 120 && (
+PATH: src/pages/Projects.js
+LINES: 43-69
+
+<button 
+                    className={`expand-btn ${expandedProjects[index] ? 'expanded' : ''}`}
+                    onClick={() => toggleExpand(index)}
+                    aria-label={expandedProjects[index] ? 'Show less' : 'Show more'}
+                    aria-expanded={expandedProjects[index]}
+                  >
+                    <svg className="expand-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                    <span>{expandedProjects[index] ? 'Show less' : 'Show more'}</span>
+                  </button>
+                )}
+              </div>
+              
+              {/* Tech Stack: Chip Elements */}
+              <div className="project-tech">
+                {project.technologies && project.technologies.map((tech, i) => (
+                  <span key={i} className="chip">{tech}</span>
+                ))}
+              </div>
+
+              {/* Actions Row: Clear call-to-action */}
+              <div className="project-actions">
+                {project.url && (
+                  <a 
+                    href={project.url} 
+                    target="_blank"
+PATH: src/pages/Projects.js
+LINES: 70-88
+
+rel="noopener noreferrer" 
+                    className="project-action-btn"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+                    </svg>
+                    <span>View on GitHub</span>
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default Projects;
+PATH: src/reportWebVitals.js
+LINES: 1-13
+
+const reportWebVitals = onPerfEntry => {
+  if (onPerfEntry && onPerfEntry instanceof Function) {
+    import('web-vitals').then(({ getCLS, getFID, getFCP, getLCP, getTTFB }) => {
+      getCLS(onPerfEntry);
+      getFID(onPerfEntry);
+      getFCP(onPerfEntry);
+      getLCP(onPerfEntry);
+      getTTFB(onPerfEntry);
+    });
+  }
+};
+
+export default reportWebVitals;
+PATH: src/services/chatAPIClient.js
+LINES: 1-6
+
+/**
+ * Chat API Client - Client-Side Langchain
+ * Handles LLM interactions directly in the browser using Langchain
+ * No backend server required
+ */
+PATH: src/services/chatAPIClient.js
+LINES: 7-55
+
+import ragService from './ragService';
+
+export class ChatAPIClient {
+  constructor() {
+    this.ragEnabled = process.env.REACT_APP_RAG_ENABLED !== 'false';
+  }
+
+  /**
+   * Send message to LLM with RAG context
+   * @param {string} message - User message
+   * @param {Array} conversationHistory - Previous messages for context
+   * @returns {Promise<string>} - LLM response
+   */
+  async sendMessage(message, conversationHistory = []) {
+    try {
+      if (!message || typeof message !== 'string') {
+        throw new Error('Invalid message');
+      }
+
+      // Ensure RAG is initialized
+      if (!ragService.initialized) {
+        console.log('🔄 Initializing RAG service...');
+        await ragService.initialize();
+      }
+
+      // Check if initialization succeeded
+      if (!ragService.isReady()) {
+        const status = ragService.getStatus();
+        throw new Error(`RAG initialization failed. Status: ${JSON.stringify(status)}`);
+      }
+
+      // Query RAG
+      const result = await ragService.query(message, conversationHistory);
+      return result.text;
+    } catch (err) {
+      console.error('Chat API error:', err);
+      throw err;
+    }
+  }
+
+  /**
+   * Get RAG status for debugging
+   */
+  getStatus() {
+    return ragService.getStatus();
+  }
+}
+
+export default new ChatAPIClient();
+PATH: src/services/ragService.js
+LINES: 1-8
+
+/**
+ * Client-Side RAG Service using Binary Index
+ * Uses pre-computed embeddings from /rag/ assets (meta.json, vectors.f32, texts.txt)
+ * LLM can call tools to access resume subsections on-demand (tools: experience, education, etc.)
+ */
+
+import { ChatOpenAI } from '@langchain/openai';
+import { OpenAIEmbeddings } from '@langchain/openai';
+PATH: src/services/ragService.js
+LINES: 9-49
+
+import { tool } from '@langchain/core/tools';
+
+export class RAGChatService {
+  constructor() {
+    this.embedder = null; // OpenAI embeddings for query encoding
+    this.llm = null;
+    this.llmWithTools = null; // LLM bound with tools
+    this.initialized = false;
+    this.resumeData = null;
+    
+    // Binary index assets (cached after first load)
+    this.indexMeta = null;           // Parsed meta.json
+    this.vectors = null;              // Float32Array of shape count * dim
+    this.textsBuffer = null;           // Uint8Array buffer for texts.txt
+    this.indexLoaded = false;
+    
+    // Project detection
+    this.repoNames = [];             // Unique repo names from index
+    this.projectAliases = new Map(); // normalized alias -> repo name
+
+    // Conversation memory (rolling summary stored in sessionStorage)
+    this.conversationSummary = '';
+
+    // Tool definitions (lazy-initialized in initialize())
+    this.tools = [];
+  }
+
+  async loadResumeData() {
+    if (this.resumeData) return this.resumeData;
+    try {
+      const response = await fetch('/data/resume.json');
+      if (!response.ok) throw new Error('Failed to load resume data');
+      this.resumeData = await response.json();
+      return this.resumeData;
+    } catch (err) {
+      console.warn('Could not load resume data:', err.message);
+      return null;
+    }
+  }
+
+  async initialize() {
+PATH: src/services/ragService.js
+LINES: 50-101
+
+if (this.initialized) return;
+
+    try {
+      const apiKey = process.env.REACT_APP_OPENAI_API_KEY;
+      if (!apiKey) {
+        throw new Error('REACT_APP_OPENAI_API_KEY not found in environment');
+      }
+
+      // Initialize query embedder
+      this.embedder = new OpenAIEmbeddings({
+        apiKey,
+        model: 'text-embedding-3-large'
+      });
+
+      // Initialize LLM
+      this.llm = new ChatOpenAI({
+        apiKey,
+        model: process.env.REACT_APP_LLM_MODEL || 'gpt-3.5-turbo',
+        temperature: 0.2,
+        maxTokens: 900
+      });
+
+      // Build and bind tools to LLM
+      this.buildTools();
+      this.llmWithTools = this.llm.bindTools(this.tools);
+
+      // Load resume data for system context
+      await this.loadResumeData();
+
+      // Load binary RAG index assets
+      await this.loadBinaryIndex();
+
+      if (!this.indexLoaded || !this.indexMeta) {
+        throw new Error('Failed to initialize binary RAG index');
+      }
+      
+      // Build project alias map for robust detection
+      this.buildProjectAliases();
+
+      this.initialized = true;
+      console.log('✅ RAG initialized successfully');
+    } catch (err) {
+      console.error('❌ Failed to initialize RAG:', err.message);
+      this.initialized = false;
+      throw err;
+    }
+  }
+
+  // --- Tool Definitions ---
+  buildTools() {
+    // Tool: Get experience
+    const getExperienceTool = tool(
+PATH: src/services/ragService.js
+LINES: 102-143
+
+() => {
+        const experience = this.resumeData?.experience || [];
+        return JSON.stringify(experience, null, 2);
+      },
+      {
+        name: 'get_experience',
+        description: 'Retrieve Gauransh\'s work experience, including companies, positions, years, descriptions, and technologies used.'
+      }
+    );
+
+    // Tool: Get education
+    const getEducationTool = tool(
+      () => {
+        const education = this.resumeData?.education || [];
+        return JSON.stringify(education, null, 2);
+      },
+      {
+        name: 'get_education',
+        description: 'Retrieve Gauransh\'s education history, including schools, degrees, dates, GPA, and relevant coursework.'
+      }
+    );
+
+    // Tool: Get certifications
+    const getCertificationsTool = tool(
+      () => {
+        const certifications = this.resumeData?.certifications || [];
+        return JSON.stringify(certifications, null, 2);
+      },
+      {
+        name: 'get_certifications',
+        description: 'Retrieve Gauransh\'s licenses and certifications, including title, organization, date issued, and credential ID.'
+      }
+    );
+
+    // Tool: Get projects
+    const getProjectsTool = tool(
+      () => {
+        const projects = this.resumeData?.projects || [];
+        return JSON.stringify(projects, null, 2);
+      },
+      {
+        name: 'get_projects',
+PATH: src/services/ragService.js
+LINES: 144-190
+
+description: 'Retrieve Gauransh\'s projects, including titles, descriptions, dates, technologies, and repository links.'
+      }
+    );
+
+    // Tool: Get skills
+    const getSkillsTool = tool(
+      () => {
+        const skills = this.resumeData?.skills || [];
+        return JSON.stringify(skills, null, 2);
+      },
+      {
+        name: 'get_skills',
+        description: 'Retrieve Gauransh\'s technical skills organized by category (e.g., languages, frameworks, tools).'
+      }
+    );
+
+    // Tool: Get contact info
+    const getContactInfoTool = tool(
+      () => {
+        const socials = this.resumeData?.socials || [];
+        const contact = {
+          socials,
+          basicInfo: this.resumeData?.basic_info || {}
+        };
+        return JSON.stringify(contact, null, 2);
+      },
+      {
+        name: 'get_contact_info',
+        description: 'Retrieve Gauransh\'s contact information and social media profiles (email, LinkedIn, GitHub, etc.).'
+      }
+    );
+
+    this.tools = [
+      getExperienceTool,
+      getEducationTool,
+      getCertificationsTool,
+      getProjectsTool,
+      getSkillsTool,
+      getContactInfoTool
+    ];
+
+    console.log('✓ Built 6 tools for resume subsections');
+  }
+
+  async loadBinaryIndex() {
+    if (this.indexLoaded && this.indexMeta && this.vectors && this.textsBuffer) {
+      console.log('✓ Binary index already cached, reusing...');
+PATH: src/services/ragService.js
+LINES: 191-223
+
+return;
+    }
+
+    const loadStart = Date.now();
+    try {
+      // 1. Load and parse meta.json
+      const metaResponse = await fetch('/rag/meta.json');
+      if (!metaResponse.ok) throw new Error('Failed to load /rag/meta.json');
+      this.indexMeta = await metaResponse.json();
+
+      const { count, dim, items } = this.indexMeta;
+      if (!count || !dim || !items || items.length !== count) {
+        throw new Error('Invalid meta.json: missing count, dim, or items');
+      }
+
+      // 2. Load vectors.f32 as Float32Array
+      const vectorsResponse = await fetch('/rag/vectors.f32');
+      if (!vectorsResponse.ok) throw new Error('Failed to load /rag/vectors.f32');
+      const arrayBuffer = await vectorsResponse.arrayBuffer();
+      this.vectors = new Float32Array(arrayBuffer);
+
+      if (this.vectors.length !== count * dim) {
+        throw new Error(`Vector size mismatch: got ${this.vectors.length}, expected ${count * dim}`);
+      }
+
+      // 3. Load texts.txt as Uint8Array
+      const textsResponse = await fetch('/rag/texts.txt');
+      if (!textsResponse.ok) throw new Error('Failed to load /rag/texts.txt');
+      this.textsBuffer = new Uint8Array(await textsResponse.arrayBuffer());
+
+      this.indexLoaded = true;
+      const loadTime = Date.now() - loadStart;
+      console.log(`✓ Loaded binary index: ${count} items, dim=${dim}, in ${loadTime}ms`);
+PATH: src/services/ragService.js
+LINES: 224-265
+
+} catch (err) {
+      console.error('Failed to load binary index:', err.message);
+      this.indexLoaded = false;
+      throw err;
+    }
+  }
+
+  // --- Project Detection Helpers ---
+
+  normalizeText(text) {
+    // Normalize text for fuzzy matching
+    return text
+      .toLowerCase()
+      .replace(/[_-]/g, ' ')           // Replace _ and - with spaces
+      .replace(/[^a-z0-9\s]/g, '')     // Remove punctuation
+      .replace(/\s+/g, ' ')            // Collapse whitespace
+      .trim();
+  }
+
+  buildProjectAliases() {
+    // Build alias map from index repos and resume projects
+    this.repoNames = [];
+    this.projectAliases = new Map();
+
+    // 1. Extract unique repos from index
+    const repoSet = new Set();
+    if (this.indexMeta?.items) {
+      this.indexMeta.items.forEach(item => {
+        const repo = item.repo || item.project_name;
+        if (repo) repoSet.add(repo);
+      });
+    }
+    this.repoNames = Array.from(repoSet);
+
+    // 2. Add repo names as aliases (normalized)
+    this.repoNames.forEach(repo => {
+      const normalized = this.normalizeText(repo);
+      this.projectAliases.set(normalized, repo);
+      
+      // Add version without trailing year (e.g., "bosm roulette 2019" -> "bosm roulette")
+      const withoutYear = normalized.replace(/\s+(19|20)\d{2}\s*$/, '').trim();
+      if (withoutYear !== normalized) {
+PATH: src/services/ragService.js
+LINES: 266-294
+
+this.projectAliases.set(withoutYear, repo);
+      }
+    });
+
+    // 3. Add resume project titles mapped to repo_name
+    if (this.resumeData?.projects) {
+      this.resumeData.projects.forEach(proj => {
+        if (proj.title && proj.repo_name) {
+          const normalized = this.normalizeText(proj.title);
+          this.projectAliases.set(normalized, proj.repo_name);
+        }
+      });
+    }
+
+    console.log('✓ Built project aliases:', this.projectAliases.size, 'aliases for', this.repoNames.length, 'repos');
+  }
+
+  async detectProjectContextViaLLM(userMessage) {
+    const projectList = this.resumeData?.projects
+      ? JSON.stringify(this.resumeData.projects.map(p => ({ project: p.title, repo: p.repo_name })))
+      : '[]';
+    // LLM fallback: ask LLM which project user is referring to
+    if (!this.llm || this.repoNames.length === 0) return null;
+
+    try {
+      const prompt = `User query: "${userMessage}"\n\nProject-to-repo mapping: ${projectList}\n\nWhich repo does the user's query refer to? \nRespond with ONLY the exact repo name from the "Available repos" list above, or "NONE" if no repo is mentioned.\nDo not add explanation.`;
+
+      const result = await this.llm.invoke([
+        { role: 'user', content: prompt }
+PATH: src/services/ragService.js
+LINES: 295-341
+
+]);
+
+      const response = (result.content || '').trim();
+      
+      // Check if response is a valid repo name
+      if (response !== 'NONE' && this.repoNames.includes(response)) {
+        console.log(`📦 Detected project via LLM: "${response}"`);
+        return response;
+      }
+      
+      console.log(`📦 LLM fallback: no project detected (response: "${response}")`);
+      return null;
+    } catch (err) {
+      console.warn('⚠️ LLM project detection failed:', err.message);
+      return null;
+    }
+  }
+
+  // --- Binary Index Retrieval ---
+  normalize(vec) {
+    // Normalize vector to unit length (L2 norm)
+    let norm = 0;
+    for (let i = 0; i < vec.length; i++) {
+      norm += vec[i] * vec[i];
+    }
+    norm = Math.sqrt(norm);
+    if (norm === 0) return vec;
+    const normalized = new Float32Array(vec.length);
+    for (let i = 0; i < vec.length; i++) {
+      normalized[i] = vec[i] / norm;
+    }
+    return normalized;
+  }
+
+  dotProduct(a, b) {
+    // Compute dot product of two vectors (a.k.a. cosine similarity for L2-normalized vectors)
+    let sum = 0;
+    for (let i = 0; i < a.length; i++) {
+      sum += a[i] * b[i];
+    }
+    return sum;
+  }
+
+  async embedQuery(userMessage) {
+    // Embed user message using OpenAI embeddings and normalize
+    const embedding = await this.embedder.embedQuery(userMessage);
+    const vec = new Float32Array(embedding);
+PATH: src/services/ragService.js
+LINES: 342-382
+
+return this.normalize(vec);
+  }
+
+  getChunkText(itemIndex) {
+    // Retrieve and decode text for a specific chunk from texts.txt
+    const item = this.indexMeta.items[itemIndex];
+    if (!item) return '';
+    
+    const { text_offset, text_length } = item;
+    const slice = this.textsBuffer.slice(text_offset, text_offset + text_length);
+    return new TextDecoder('utf-8').decode(slice);
+  }
+
+  retrieveTopK(queryVector, { repoFilter = null, k = 10 } = {}) {
+    // Compute dot product similarity for all vectors and return top-k
+    const { count, dim, items } = this.indexMeta;
+    const similarities = [];
+    let filteredCount = 0;
+
+    for (let i = 0; i < count; i++) {
+      // Determine repo name from items[i]
+      const itemRepo = items[i].repo || items[i].project_name;
+
+      // Skip if repo filter is active and doesn't match
+      if (repoFilter && itemRepo !== repoFilter) {
+        continue;
+      }
+      filteredCount++;
+
+      // Compute dot product directly using offset (avoid slice)
+      const vectorStart = i * dim;
+      let sim = 0;
+      for (let j = 0; j < dim; j++) {
+        sim += queryVector[j] * this.vectors[vectorStart + j];
+      }
+      
+      similarities.push({ index: i, similarity: sim });
+    }
+
+    // Debug log for scoped retrieval
+    if (repoFilter && similarities.length === 0) {
+PATH: src/services/ragService.js
+LINES: 383-419
+
+console.warn(`⚠️ Scoped retrieval returned 0 results for repo: "${repoFilter}"`);
+      console.warn(`  First item keys: ${Object.keys(items[0]).join(', ')}`);
+      console.warn(`  Filtered item count: ${filteredCount}`);
+      if (items[0]) {
+        console.warn(`  Sample item repo value: "${items[0].repo}" | project_name: "${items[0].project_name}"`);
+      }
+    }
+
+    // Sort by similarity (descending) and keep top-k
+    similarities.sort((a, b) => b.similarity - a.similarity);
+    return similarities.slice(0, k);
+  }
+
+  formatChunks(chunkIndices) {
+    // Format retrieved chunks with citations (chunk_id is already unique)
+    const formatted = [];
+
+    for (const idx of chunkIndices) {
+      const item = this.indexMeta.items[idx];
+
+      // Build citation header
+      const projectName = item.repo || item.project_name || 'Unknown';
+      const filePath = item.file_path || 'N/A';
+      const startLine = item.start_line;
+      const endLine = item.end_line;
+
+      let sourceHeader = `[Source: ${projectName} | ${filePath}`;
+      if (startLine && endLine) {
+        sourceHeader += ` | L${startLine}–${endLine}`;
+      }
+      sourceHeader += ']';
+
+      // Get chunk text and truncate
+      const chunkText = this.getChunkText(idx);
+      const maxLength = 1200;
+      const truncated = chunkText.length > maxLength
+        ? chunkText.substring(0, maxLength) + '...'
+PATH: src/services/ragService.js
+LINES: 420-449
+
+: chunkText;
+
+      formatted.push(`${sourceHeader}\n${truncated}`);
+
+    }
+    
+    // Log formatting results
+    console.log('🧹 Formatted context chunks:', formatted.length);
+    
+    // Log chunk previews (safe - first 120 chars only)
+    formatted.forEach((chunk, i) => {
+      const preview = chunk.split('\n')[1]?.slice(0, 120) || chunk.slice(0, 120);
+      console.log(`📄 Context chunk ${i + 1} preview:`, preview + '...');
+    });
+
+    return formatted.join('\n\n---\n\n');
+  }
+
+  buildSystemPrompt(retrievedContext) {
+    const projectList = this.resumeData?.projects
+      ? JSON.stringify(this.resumeData.projects.map(p => ({ project: p.title, repo: p.repo_name })))
+      : '[]';
+
+    return `You are the official AI Portfolio Assistant for **Gauransh Sawhney**, a Full-stack / AI / ML software engineer and graduate student.
+      Your role is to represent Gauransh professionally, accurately, and conservatively.
+
+      ## 🔒 Core Rules
+      1. **Ground everything:** Only cite information explicitly available via tools, retrieved context, or your training knowledge about public projects.
+      2. **Be honest:** If you don't have a detail, say "I don't have that specific information."
+      3. **Cite sources:** When referencing code or technical details, mention the project name and source.
+PATH: src/services/ragService.js
+LINES: 450-478
+
+4. **Stay professional:** Confident and enthusiastic, but never exaggerated.
+      5. **Be concise:** Keep responses to 3–4 sentences unless asked for more.
+      6. **No speculation:** Don't infer or assume beyond what's explicitly available.
+
+      ## 🛠️ Available Tools
+      Call tools to access resume details on-demand:
+      - **get_experience**: Work history and positions
+      - **get_education**: Degrees, schools, GPA
+      - **get_projects**: Project titles, descriptions, repos
+      - **get_skills**: Technical skills by category
+      - **get_certifications**: Licenses and credentials
+      - **get_contact_info**: Email, LinkedIn, GitHub, socials
+
+      ## 📐 Retrieved Context (Code & Architecture)
+      ${retrievedContext || 'No code context available for this query.'}
+
+       ## 🚦 Navigation & Action Rules
+          Append **EXACTLY ONE** action tag at the end **ONLY IF** the response clearly maps to a navigation intent.
+          If no navigation intent applies, append **nothing**.
+
+          **Education keywords:** "Degree", "University", "GPA"  
+          → <<ACTION:SCROLL_EDUCATION>>
+
+          **Experience keywords:** "Work", "Job", "Internship"  
+          → <<ACTION:SCROLL_EXPERIENCE>>
+
+          **Projects keywords:** "Projects", "GitHub", "Code", or ${projectList}  
+          → <<ACTION:SCROLL_PROJECTS>>
+PATH: src/services/ragService.js
+LINES: 479-516
+
+**Certifications keywords:** "Licenses", "Certifications", "Credentials", "Certificate"  
+          → <<ACTION:SCROLL_CERTIFICATIONS>>
+
+          **Contact keywords:** "Contact", "Email", "LinkedIn"  
+          →    <<ACTION:SCROLL_CONTACT>>
+
+          **DO NOT narrate actions.**  
+          Correct:  
+          "Gauransh has worked on projects such as Image Coloration. <<ACTION:SCROLL_PROJECTS>>"
+
+          Incorrect:  
+          "Let me scroll you to his projects. <<ACTION:SCROLL_PROJECTS>>"`;
+  }
+
+  detectProjectContext(message) {
+    if (!this.resumeData?.projects || this.projectAliases.size === 0) return null;
+    
+    const normalizedMsg = this.normalizeText(message);
+    const msgTokens = new Set(normalizedMsg.split(' ').filter(t => t.length > 0));
+
+    let bestMatch = null;
+    let bestScore = 0;
+    let matchReason = '';
+
+    // Check each alias for matches
+    for (const [alias, repoName] of this.projectAliases.entries()) {
+      // Exact inclusion match (highest priority)
+      if (normalizedMsg.includes(alias)) {
+        if (!bestMatch || alias.length > matchReason.length) {
+          bestMatch = repoName;
+          matchReason = `exact match: "${alias}"`;
+          bestScore = 1.0;
+        }
+        continue;
+      }
+
+      // Token overlap (Jaccard similarity)
+      const aliasTokens = new Set(alias.split(' ').filter(t => t.length > 0));
+PATH: src/services/ragService.js
+LINES: 517-557
+
+const intersection = new Set([...msgTokens].filter(t => aliasTokens.has(t)));
+      const union = new Set([...msgTokens, ...aliasTokens]);
+      const jaccard = intersection.size / union.size;
+
+      // Require minimum overlap of 0.5
+      if (jaccard >= 0.5 && jaccard > bestScore) {
+        bestMatch = repoName;
+        bestScore = jaccard;
+        matchReason = `token overlap (${jaccard.toFixed(2)}): "${alias}"`;
+      }
+    }
+
+    if (bestMatch) {
+      console.log(`📦 Detected project: "${bestMatch}" via ${matchReason}`);
+      return bestMatch;
+    }
+    
+    // If no alias match, mark for async LLM fallback (will be called in query())
+    return null;
+  }
+
+  // --- Agentic Tool Loop ---
+  async executeToolCall(toolName, toolInput) {
+    // Execute a tool call and return the result
+    const tool = this.tools.find(t => t.name === toolName);
+    if (!tool) {
+      console.warn(`⚠️ Tool not found: ${toolName}`);
+      return `Tool "${toolName}" not available.`;
+    }
+
+    try {
+      const result = await tool.invoke(toolInput || {});
+      return result;
+    } catch (err) {
+      console.error(`❌ Tool execution failed: ${toolName}`, err.message);
+      return `Error executing tool: ${err.message}`;
+    }
+  }
+
+  async agenticLoop(systemPrompt, messages, maxIterations = 3) {
+    // Run agentic loop: LLM → check for tool calls → execute → add results → repeat
+PATH: src/services/ragService.js
+LINES: 558-598
+
+let currentMessages = [...messages];
+    let iteration = 0;
+
+    while (iteration < maxIterations) {
+      iteration++;
+      console.log(`🔄 Agentic loop iteration ${iteration}/${maxIterations}`);
+
+      // Call LLM with tools bound
+      const response = await this.llmWithTools.invoke([
+        { role: 'system', content: systemPrompt },
+        ...currentMessages
+      ]);
+
+      // Check if response has tool calls
+      if (response.tool_calls && response.tool_calls.length > 0) {
+        console.log(`🔧 LLM called ${response.tool_calls.length} tool(s)`);
+
+        // Add LLM response to message history
+        currentMessages.push({
+          role: 'assistant',
+          content: response.content || ''
+        });
+
+        // Execute each tool call sequentially
+        for (const toolCall of response.tool_calls) {
+          const toolName = toolCall.name;
+          const toolInput = toolCall.args || {};
+
+          console.log(`  → Executing: ${toolName}`);
+          const toolResult = await this.executeToolCall(toolName, toolInput);
+
+          // Add tool result to message history
+          currentMessages.push({
+            role: 'user',
+            content: `[Tool Result from ${toolName}]:\n${toolResult}`
+          });
+        }
+
+        // Continue loop to get final response from LLM
+      } else {
+        // No tool calls, return final response
+PATH: src/services/ragService.js
+LINES: 599-637
+
+console.log(`✓ Agentic loop complete (no more tool calls)`);
+        return {
+          text: response.content || '',
+          iterations: iteration
+        };
+      }
+    }
+
+    // Max iterations reached, return current response
+    console.warn(`⚠️ Max iterations (${maxIterations}) reached`);
+    const lastResponse = currentMessages[currentMessages.length - 1];
+    return {
+      text: lastResponse?.content || 'Unable to generate response.',
+      iterations: iteration
+    };
+  }
+
+  async query(userMessage, history = []) {
+    if (!this.embedder || !this.llmWithTools || !this.initialized || !this.indexLoaded) {
+      console.warn('⚠️ RAG not ready; using resume-only context');
+      return this.queryFallback(userMessage, history);
+    }
+
+    try {
+      const queryStart = Date.now();
+      
+      // A) Log user query and project detection
+      console.log('🧠 User query:', userMessage);
+      let targetRepo = this.detectProjectContext(userMessage);
+      
+      // If no alias match found, try LLM fallback
+      if (!targetRepo) {
+        console.log('🧠 No alias match; trying LLM fallback...');
+        targetRepo = await this.detectProjectContextViaLLM(userMessage);
+      }
+      
+      console.log('📦 Detected project:', targetRepo || 'none');
+      
+      // B) Log retrieval mode
+PATH: src/services/ragService.js
+LINES: 638-670
+
+console.log('🔍 Retrieval mode:', targetRepo ? `scoped (repo: ${targetRepo})` : 'broad');
+
+      // Embed query and retrieve top-k (RAG context for code/implementation details)
+      const queryVector = await this.embedQuery(userMessage);
+      const topKResults = this.retrieveTopK(queryVector, {
+        repoFilter: targetRepo,
+        k: 10
+      });
+      
+      // C) Log raw retrieval results
+      console.log('📊 Raw retrieval hits:', topKResults.length);
+      if (topKResults.length > 0) {
+        console.log('📊 Top 3 hits:', topKResults.slice(0, 3).map(h => ({
+          similarity: h.similarity.toFixed(4),
+          repo: this.indexMeta.items[h.index].repo || this.indexMeta.items[h.index].project_name,
+          path: this.indexMeta.items[h.index].file_path
+        })));
+      }
+
+      // Format RAG context (only if retrieval hits found)
+      let formattedContext = '';
+      let sourceDocuments = [];
+      if (topKResults.length > 0) {
+        const topKIndices = topKResults.map(r => r.index);
+        formattedContext = this.formatChunks(topKIndices);
+        sourceDocuments = topKIndices.map(idx => ({
+          pageContent: this.getChunkText(idx),
+          metadata: this.indexMeta.items[idx]
+        }));
+      }
+
+      // Build lightweight system prompt with RAG context (if any)
+      const systemPrompt = this.buildSystemPrompt(formattedContext);
+PATH: src/services/ragService.js
+LINES: 671-707
+
+const recentHistory = history.slice(-6);
+
+      // Add conversation summary if available
+      const summary = this.getConversationSummary();
+      if (summary) {
+        recentHistory.unshift({ role: 'system', content: `Conversation Summary:\n${summary}` });
+      }
+
+      // Run agentic loop: tools will be available for LLM to call on-demand
+      const agenticResult = await this.agenticLoop(systemPrompt, [
+        ...recentHistory,
+        { role: 'user', content: userMessage }
+      ]);
+
+      const queryTime = Date.now() - queryStart;
+      const topSimilarity = topKResults[0]?.similarity?.toFixed(3) || 'N/A';
+      console.log(`✓ Query completed in ${queryTime}ms, retrieved ${topKResults.length} chunks (top similarity: ${topSimilarity}), agentic iterations: ${agenticResult.iterations}`);
+
+      const responseText = this.normalizeEmails(agenticResult.text);
+
+      // Update conversation summary asynchronously
+      this.updateConversationSummaryAsync([
+        ...recentHistory.filter(m => m.role !== 'system'),
+        { role: 'user', content: userMessage },
+        { role: 'assistant', content: responseText }
+      ]);
+
+      return {
+        text: responseText,
+        sourceDocuments
+      };
+    } catch (err) {
+      console.error('❌ RAG query failed:', err.message);
+      return this.queryFallback(userMessage, history);
+    }
+  }
+PATH: src/services/ragService.js
+LINES: 708-742
+
+async queryFallback(userMessage, history = []) {
+    console.log('📋 Using fallback mode (tools available, no RAG context)');
+    try {
+      if (!this.llmWithTools) throw new Error('LLM not initialized');
+
+      // Lightweight fallback prompt with just identity + tools available
+      const fallbackSystemPrompt = `You are Gauransh Sawhney's portfolio assistant. 
+        Answer questions about Gauransh's experience, education, projects, and skills.
+        Use the available tools to access resume details on demand.
+        Be professional, concise, and honest. If you don't have info, say so.`;
+
+      const recentHistory = history.slice(-4);
+
+      // Run agentic loop with fallback prompt
+      const agenticResult = await this.agenticLoop(fallbackSystemPrompt, [
+        ...recentHistory,
+        { role: 'user', content: userMessage }
+      ]);
+
+      return { 
+        text: this.normalizeEmails(agenticResult.text), 
+        sourceDocuments: [] 
+      };
+    } catch (err) {
+      console.error('❌ Fallback query failed:', err.message);
+      return { 
+        text: 'I\'m having trouble responding right now. Please try again.', 
+        sourceDocuments: [] 
+      };
+    }
+  }
+
+  // --- Email Normalization Helper ---
+  normalizeEmails(text) {
+    // Convert emails to markdown mailto links (idempotent - safe to call multiple times)
+PATH: src/services/ragService.js
+LINES: 743-773
+
+// Preserves code blocks (```) and existing mailto links
+    // Does nothing if mailto: already appears in the same email string
+    
+    const parts = text.split(/(```[\s\S]*?```)/);
+    
+    return parts.map((part, index) => {
+      if (index % 2 === 1) return part;
+      
+      let result = part;
+      
+      // Pre-scan for existing mailto links to avoid duplicate conversions
+      const existingMailtoEmails = new Set();
+      const mailtoRegex = /\(mailto:([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\)/g;
+      let mailtoMatch;
+      while ((mailtoMatch = mailtoRegex.exec(result)) !== null) {
+        existingMailtoEmails.add(mailtoMatch[1]);
+      }
+      
+      // 1. Convert [email] -> [email](mailto:email) only if not already followed by (mailto:...)
+      result = result.replace(/\[([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\](?!\(mailto:)/g, (match, email) => {
+        // Skip if already converted to mailto
+        if (existingMailtoEmails.has(email)) {
+          return match;
+        }
+        return `[${email}](mailto:${email})`;
+      });
+      
+      // 2. Convert plain emails -> [email](mailto:email)
+      // Skip if email is already in a mailto link or surrounded by markdown syntax
+      result = result.replace(/\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g, (match, email) => {
+        // Skip if already converted to mailto
+PATH: src/services/ragService.js
+LINES: 774-816
+
+if (existingMailtoEmails.has(email)) {
+          return match;
+        }
+        
+        // Check if email is preceded by (mailto: or ]( (already in a link)
+        const idx = result.indexOf(match);
+        const before = result.substring(Math.max(0, idx - 8), idx);
+        if (before.includes('mailto:') || before.endsWith('](')) {
+          return match;
+        }
+        
+        return `[${email}](mailto:${email})`;
+      });
+      
+      return result;
+    }).join('');
+  }
+
+  // --- Conversation Memory (Rolling Summary) ---
+  getConversationSummary() {
+    try {
+      if (!this.conversationSummary) {
+        const stored = sessionStorage.getItem('conversationSummary') || '';
+        this.conversationSummary = stored;
+      }
+      return this.conversationSummary;
+    } catch (_) {
+      return this.conversationSummary || '';
+    }
+  }
+
+  setConversationSummary(summary) {
+    this.conversationSummary = summary || '';
+    try {
+      sessionStorage.setItem('conversationSummary', this.conversationSummary);
+    } catch (_) {
+      // ignore storage errors
+    }
+  }
+
+  buildSummaryPrompt(existingSummary, messages) {
+    const header = `You are maintaining a concise conversation summary for a portfolio assistant.\n` +
+      `Update the summary to capture enduring context, user goals, constraints, and decisions.\n` +
+PATH: src/services/ragService.js
+LINES: 817-834
+
+`Keep it under 200 tokens. Exclude chit-chat. Prefer bullet points.\n`;
+
+    const summaryBlock = existingSummary
+      ? `Current summary:\n${existingSummary}\n\n`
+      : '';
+
+    const historyText = messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
+    return `${header}${summaryBlock}Recent turns:\n${historyText}\n\nNew summary:`;
+  }
+
+  updateConversationSummaryAsync(messages) {
+    try {
+      const existing = this.getConversationSummary();
+      const prompt = this.buildSummaryPrompt(existing, messages);
+      // Fire-and-forget to avoid blocking the main query
+      this.llm.invoke([
+        { role: 'system', content: 'You are a summarizer that outputs ONLY the updated summary.' },
+        { role: 'user', content: prompt }
+PATH: src/services/ragService.js
+LINES: 835-858
+
+]).then(res => {
+        const updated = (res?.content || '').trim();
+        if (updated) this.setConversationSummary(updated);
+      }).catch(() => { /* ignore */ });
+    } catch (_) {
+      // ignore summarization errors
+    }
+  }
+
+  isReady() {
+    return this.initialized && this.embedder !== null && this.llm !== null && this.indexLoaded;
+  }
+
+  getStatus() {
+    return {
+      initialized: this.initialized,
+      ready: this.isReady(),
+      indexLoaded: this.indexLoaded,
+      apiKey: process.env.REACT_APP_OPENAI_API_KEY ? 'configured' : 'missing'
+    };
+  }
+}
+
+export default new RAGChatService();
+PATH: src/setupTests.js
+LINES: 1-5
+
+// jest-dom adds custom jest matchers for asserting on DOM nodes.
+// allows you to do things like:
+// expect(element).toHaveTextContent(/react/i)
+// learn more: https://github.com/testing-library/jest-dom
+import '@testing-library/jest-dom';
 # Twitter-Tweets-Classsification
 ## 🐤 Vision-Controlled Flappy Bird (MATLAB)
 
