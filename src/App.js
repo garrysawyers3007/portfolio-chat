@@ -80,6 +80,8 @@ const App = () => {
   const [error, setError] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(true); // Default dark
   const [resumeData, setResumeData] = useState(null);
+  const suggestionChipsRef = useRef(null);
+  const hasScrolledOnFirstChatRef = useRef(false);
 
   // Use the nudge hook
   const { showNudge, inputRef } = useInputNudge();
@@ -116,6 +118,35 @@ const App = () => {
       .then(data => setResumeData(data))
       .catch(err => console.error("Failed to load resume data:", err));
   }, []);
+
+  useEffect(() => {
+    if (messages.length === 0 || hasScrolledOnFirstChatRef.current) return;
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const scrollToChips = () => {
+      const target = suggestionChipsRef.current;
+      if (!target) return;
+
+      target.scrollIntoView({
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+        block: 'end'
+      });
+
+      const rect = target.getBoundingClientRect();
+      const bottom = rect.bottom + window.scrollY;
+      const desiredTop = bottom - window.innerHeight + 16;
+      window.scrollTo({
+        top: Math.max(desiredTop, 0),
+        behavior: prefersReducedMotion ? 'auto' : 'smooth'
+      });
+
+      hasScrolledOnFirstChatRef.current = true;
+    };
+
+    requestAnimationFrame(() => requestAnimationFrame(scrollToChips));
+    const retryId = setTimeout(scrollToChips, 250);
+    return () => clearTimeout(retryId);
+  }, [messages.length]);
 
   const handleSend = (text) => {
     if (!text.trim() || isLoading) return;
@@ -173,7 +204,9 @@ const App = () => {
           </div>
           
           {/* Chips */}
-          <SuggestionChips suggestions={suggestions} onChipClick={handleSend} disabled={isLoading} />
+          <div ref={suggestionChipsRef}>
+            <SuggestionChips suggestions={suggestions} onChipClick={handleSend} disabled={isLoading} />
+          </div>
           
           {error && <div className="error-message">{error}</div>}
         </div>

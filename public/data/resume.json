@@ -6,8 +6,10 @@
         "about": "About me",
         "projects": "Projects",
         "skills": "Skills",
+        "certifications": "Certifications",
         "experience": "Experience"
-      }
+      },
+      "role": "Software/ML Engineer & AI Researcher"
     },
     "projects": [
       {

@@ -35,13 +35,13 @@ const AboutMe = ({ resumeData }) => {
         
         {/* 2. Sub-headline */}
         <h2 className="hero-subtitle">
-          {role} & AI Researcher
+          {role}
         </h2>
 
         {/* 3. The "Chat Prompt" Line */}
         <div className="ai-prompt-wrapper">
           <p className="ai-prompt-text">
-            Chat with an AI trained on my codebase, projects, and research.
+            Chat with an AI trained on my work.
             <br />
             <strong>Ask questions about my work below.</strong>
           </p>
