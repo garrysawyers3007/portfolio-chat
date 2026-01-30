@@ -50,9 +50,9 @@ export class RAGChatService {
     if (this.initialized) return;
 
     try {
-      const apiKey = process.env.REACT_APP_OPENAI_API_KEY;
+      const apiKey = process.env.OPENAPI;
       if (!apiKey) {
-        throw new Error('REACT_APP_OPENAI_API_KEY not found in environment');
+        throw new Error('OPENAPI not found in environment');
       }
 
       // Initialize query embedder
@@ -869,7 +869,7 @@ export class RAGChatService {
       initialized: this.initialized,
       ready: this.isReady(),
       indexLoaded: this.indexLoaded,
-      apiKey: process.env.REACT_APP_OPENAI_API_KEY ? 'configured' : 'missing'
+      apiKey: process.env.OPENAPI ? 'configured' : 'missing'
     };
   }
 }
