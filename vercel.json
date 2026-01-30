@@ -1,0 +1,30 @@
+{
+  "buildCommand": "npm run build",
+  "devCommand": "npm start",
+  "installCommand": "npm install",
+  "framework": "create-react-app",
+  "env": {
+    "OPENAI_API_KEY": {
+      "description": "OpenAI API key for backend serverless functions (LLM + embeddings)",
+      "required": true
+    },
+    "REACT_APP_LLM_MODEL": {
+      "description": "LLM model name (gpt-4o-mini, gpt-4, gpt-3.5-turbo, etc)",
+      "default": "gpt-3.5-turbo"
+    },
+    "REACT_APP_EMBEDDING_MODEL": {
+      "description": "Embedding model (text-embedding-3-large, text-embedding-3-small)",
+      "default": "text-embedding-3-large"
+    },
+    "REACT_APP_RAG_ENABLED": {
+      "description": "Enable RAG retrieval (true/false)",
+      "default": "true"
+    }
+  },
+  "functions": {
+    "api/chat.js": {
+      "memory": 1024,
+      "maxDuration": 60
+    }
+  }
+}

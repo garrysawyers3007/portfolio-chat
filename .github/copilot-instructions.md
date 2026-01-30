@@ -1,30 +1,42 @@
 # Portfolio Chat – Copilot Instructions
 
 ## Big picture
-- Client-side React portfolio with RAG chatbot; no backend. Chat flow is in [src/services/chatAPIClient.js](src/services/chatAPIClient.js) → [src/services/ragService.js](src/services/ragService.js) → UI in [src/components/ChatHistory.js](src/components/ChatHistory.js).
-- Retrieval uses binary vector assets in [public/rag/](public/rag/) (meta.json, vectors.f32, texts.txt). Resume content is the source of truth in [public/data/resume.json](public/data/resume.json).
-- Action tags drive auto-scroll: responses may end with `<<ACTION:SCROLL_*>>`, parsed by ChatHistory; target sections live in page components under [src/pages/](src/pages/).
+- **Client-side React 19 portfolio** with RAG chatbot; **secure backend proxy** protects OpenAI API key. Chat flow: [src/services/chatAPIClient.js](src/services/chatAPIClient.js) → [src/services/ragService-secure.js](src/services/ragService-secure.js) → [api/embed.js](api/embed.js) + [api/chat.js](api/chat.js) → UI in [src/components/ChatHistory.js](src/components/ChatHistory.js).
+- **Agentic architecture**: LLM can call 6 resume tools on-demand (`get_experience`, `get_education`, `get_projects`, `get_skills`, `get_certifications`, `get_contact_info`) via OpenAI function calling with proper JSON Schema validation. Tools in [src/services/ragService.js#L92](src/services/ragService.js#L92) with `emptySchema` ({type: 'object', properties: {}, required: []}). Agentic loop runs max 3 iterations: LLM → detect tool calls → execute tools → inject results → LLM final response.
+- **Binary vector index**: Pre-computed embeddings stored in [public/rag/](public/rag/) (meta.json for metadata, vectors.f32 for Float32 embeddings, texts.txt for chunk content). Resume content is single source of truth in [public/data/resume.json](public/data/resume.json).
+- **Action tags**: Responses ending with `<<ACTION:SCROLL_*>>` trigger auto-scroll to page sections. Parsed/stripped by ChatHistory regex; target sections have IDs in [src/pages/](src/pages/) components.
+- **Security model**: Vercel Serverless Functions (`/api/embed`, `/api/chat`) proxy OpenAI requests. API key stored as `OPENAI_API_KEY` (no `REACT_APP_` prefix) in Vercel environment variables only.
 
 ## Project-specific patterns
-- RAG is fully client-side (OpenAI embeddings + LLM). `ragService` does embedding, dot-product search, chunk de-dupe by `chunk_id`, and optional project-scoped retrieval.
-- Message formatting pipeline in `ChatHistory`: parse `[label](url)` links → bold `**text**` → strip action tags.
-- Theme is CSS variables only in [src/index.css](src/index.css). Toggle is `document.documentElement.dataset.theme` (set in [src/App.js](src/App.js) and [src/components/TopNav.js](src/components/TopNav.js)).
-- Avoid inline styles unless truly dynamic; use shared utilities in [src/App.css](src/App.css) (e.g., `.section`, `.card`, `.btn`).
+- **Backend proxy architecture**: Client calls `/api/embed` and `/api/chat` Vercel serverless functions instead of OpenAI directly. API key secured server-side as `OPENAI_API_KEY` (no `REACT_APP_` prefix).
+- **RAG pipeline**: Client-side embedding via `/api/embed` → dot-product similarity search (cosine for L2-normalized vectors) → format top-K chunks with citations → inject into system prompt. Scoped retrieval: project detection via Jaccard similarity on aliases OR LLM fallback, then filter vectors by `repo` field (k=8 for scoped, k=10 for broad).
+- **Message formatting**: [ChatHistory.js](src/components/ChatHistory.js) pipeline: parse `[label](url)` links → bold `**text**` → strip action tags regex `/<?<?ACTION:SCROLL_[A-Z_]+>?>?/g`.
+- **Theme system**: CSS variables only ([src/index.css](src/index.css)). No CSS-in-JS. Toggle via `document.documentElement.dataset.theme` (dark|light). Set in [src/App.js](src/App.js) localStorage + [src/components/TopNav.js](src/components/TopNav.js).
+- **Factory pattern**: Reusable handlers via factory functions (e.g., `createScrollHandler`, `createMessageFormatter`). Avoid inline styles; use shared utilities in [src/App.css](src/App.css) (`.section`, `.card`, `.btn`).
 
 ## Workflows
-- Local dev: `npm install` then `npm start` (CRA). Tests: `npm test`. Production build: `npm run build`.
-- Environment variables in `.env.local`: `REACT_APP_OPENAI_API_KEY` (required), `REACT_APP_LLM_MODEL`, `REACT_APP_RAG_ENABLED`.
-- Adding/changing resume data: edit [public/data/resume.json](public/data/resume.json) and regenerate the RAG index assets in [public/rag/](public/rag/) (see [CLIENT_SIDE_MIGRATION.md](CLIENT_SIDE_MIGRATION.md)).
+- **Local dev with Vercel Functions**: `npm install` then `vercel dev` (NOT `npm start`—CRA dev server doesn't handle `/api` routes). Tests: `npm test`. Production build: `npm run build`.
+- **Environment variables**: 
+  - Local: Create `.env` file (not `.env.local`) with `OPENAI_API_KEY=sk-...` for `vercel dev`
+  - Or pass via CLI: `OPENAI_API_KEY=sk-... vercel dev`
+  - Or sync from Vercel: `vercel env pull` then `vercel dev`
+  - Client-side (safe to expose): `REACT_APP_LLM_MODEL`, `REACT_APP_EMBEDDING_MODEL`, `REACT_APP_RAG_ENABLED`
+- **Vercel deployment**: Set `OPENAI_API_KEY` in Vercel Dashboard (Project Settings → Environment Variables). API routes in `/api` auto-deploy.
+- **Adding/changing resume data**: Edit [public/data/resume.json](public/data/resume.json) and regenerate the RAG index assets in [public/rag/](public/rag/) (see [CLIENT_SIDE_MIGRATION.md](CLIENT_SIDE_MIGRATION.md)).
 
 ## Gotchas
 - `server.js` is deprecated; keep changes client-side only.
 - Action tag must be the final characters in the model reply (e.g., `... <<ACTION:SCROLL_PROJECTS>>`) to trigger scroll.
 - Section ids expected by scroll tags: `about-me`, `education`, `experience`, `projects`, `certifications`, `contact`.
-- ✅ Initialize embedder once in `RAGService.initialize()` on App mount
+- ✅ Tool schemas MUST be valid JSON Schema objects: `{type: 'object', properties: {}, required: []}`. Invalid schemas cause OpenAI 400 errors.
+- ✅ Initialize RAG once in `RAGService.initialize()` on App mount
 - ✅ Always pass conversation history (last 6 messages) to maintain context
 - ✅ Wrap LLM calls in try-catch with fallback to resume-only context
 - ✅ Normalize emails in LLM responses via `ragService.normalizeEmails()`
-- ❌ NEVER expose API key in frontend code (use .env.local only)
+- ❌ NEVER expose API key in frontend code (use server-side env vars only)
+- ✅ Use `OPENAI_API_KEY` (no REACT_APP_ prefix) for backend serverless functions
+- ✅ Backend `/api` routes handle all OpenAI requests; client never calls OpenAI directly
+- ✅ Use `vercel dev` for local testing with API routes (not `npm start`)
 
 ### Accessibility
 - ✅ Semantic HTML (`<nav>`, `<button>`, `<section>`)
@@ -36,12 +48,13 @@
 ## Debugging Checklist
 
 ### RAG Not Initializing
-- [ ] `.env.local` has `REACT_APP_OPENAI_API_KEY=sk-...`
+- [ ] `.env.local` has `OPENAI_API_KEY=sk-...` (no REACT_APP_ prefix)
+- [ ] Vercel environment variables: `OPENAI_API_KEY` set (Project Settings)
 - [ ] `/rag/meta.json` exists and valid JSON (check Network tab)
 - [ ] `/rag/vectors.f32` size = count × 1536 × 4 bytes (binary Float32)
 - [ ] `/rag/texts.txt` size matches total text_length sum in meta.json
-- [ ] Browser console shows "✅ RAG initialized successfully"
-- [ ] `ragService.getStatus()` returns `{ initialized: true, indexLoaded: true, apiKey: 'configured' }`
+- [ ] Browser console shows "✅ RAG initialized successfully (secure proxy mode)"
+- [ ] Network tab: requests to `/api/embed` and `/api/chat` return 200 (not direct `api.openai.com` calls)
 
 ### Action Tags Visible in Chat (Not Executing)
 - [ ] ChatHistory.js regex correctly strips: `/<?<?ACTION:SCROLL_[A-Z_]+>?>?/g`
@@ -58,11 +71,24 @@
 - [ ] Check DevTools: computed styles show correct CSS variable values
 
 ### Chat Not Responding
-- [ ] OpenAI API key valid (test: `openai.ChatCompletion.create({...})`)
+- [ ] OpenAI API key valid and set in `.env` (for `vercel dev`) or Vercel Dashboard
+- [ ] Using `vercel dev` (NOT `npm start`—required for `/api` routes)
 - [ ] Billing/quota not exceeded on OpenAI account
 - [ ] Browser console: check for errors in chatAPIClient.sendMessage()
+- [ ] Network tab: `/api/chat` endpoint returns 200 (check response body for error details)
+- [ ] API key is string type (check type validation in `/api/chat.js`)
 - [ ] Verify RAG initialized before sending message
-- [ ] Check Network tab: POST requests to OpenAI endpoints returning 200
+- [ ] Check Vercel function logs for backend errors
+
+### Tools Not Being Called or 400 Schema Errors
+- [ ] LLM model supports function calling (gpt-3.5-turbo-1106+, gpt-4+)
+- [ ] Tool schemas are valid JSON Schema: `{type: 'object', properties: {}, required: []}` (required for OpenAI)
+- [ ] Check `buildTools()` in [src/services/ragService.js#L92](src/services/ragService.js#L92)—all 6 tools must have `schema: emptySchema`
+- [ ] Tool descriptions are clear and specific
+- [ ] Check console for "🔧 LLM called X tool(s)" logs
+- [ ] Agentic loop completing iterations (max 3) without errors
+- [ ] Tool execution returns valid JSON-serializable data
+- [ ] `/api/chat` endpoint correctly converts tools: `function: { name, description, parameters: t.schema }`
 
 ## Project Structure
 ```
@@ -84,8 +110,13 @@ src/
 │   ├── Certifications.js/css   # License & certification cards
 │   └── ContactMe.js/css        # Contact info + social links
 └── services/
-    ├── ragService.js      # Core: query embedding, retrieval, LLM inference, project detection
+    ├── ragService-secure.js # Core: backend proxy, retrieval, project detection (CURRENT)
+    ├── ragService.js      # Legacy: direct OpenAI calls (deprecated for production)
     └── chatAPIClient.js   # Wrapper: ensures RAG ready before queries
+
+api/
+├── embed.js               # Vercel serverless: proxy OpenAI embeddings API
+└── chat.js                # Vercel serverless: proxy OpenAI chat completions API
 
 public/
 ├── data/
@@ -115,10 +146,11 @@ public/
 
 8. **Resume as API contract** - Single JSON file drives all portfolio sections + RAG context. Adding skills/projects only requires JSON edit + RAG index regeneration.
 
-9. **Conversation memory** - sessionStorage-based rolling summary compresses multi-turn conversations into concise bullets, reducing token bloat while preserving context continuity.
+9. **Conversation memory** - sessionStorage-based rolling summary compresses multi-turn conversations into concise bullets, reducing token bloat while preserving context continuity. Summary stored in sessionStorage, updated async via fire-and-forget LLM calls.
 
 ## Documentation
 
+- `BACKEND_PROXY_SECURITY.md` - Complete migration guide for secure backend proxy architecture
 - `CLIENT_SIDE_MIGRATION.md` - Server → client-side Langchain migration notes
 - `DESIGN_TOKENS.md` - Complete CSS variable system reference (468 lines)
 - `LANGCHAIN_SETUP.md` / `LANGCHAIN_INTEGRATION.md` - Langchain config details
@@ -126,5 +158,5 @@ public/
 
 ---
 
-**Last Updated:** January 28, 2026  
-**Status:** Production-ready (client-side RAG + conversation memory)
+**Last Updated:** January 30, 2026  
+**Status:** Production-ready (client-side RAG + conversation memory + secure backend proxy)

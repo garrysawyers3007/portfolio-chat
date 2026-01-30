@@ -1,36 +1,34 @@
 /**
- * Client-Side RAG Service using Binary Index
- * Uses pre-computed embeddings from /rag/ assets (meta.json, vectors.f32, texts.txt)
- * LLM can call tools to access resume subsections on-demand (tools: experience, education, etc.)
+ * Client-Side RAG Service - Secure Backend Proxy Version
+ * Uses backend API endpoints to protect OpenAI API key
+ * API calls: /api/embed (embeddings), /api/chat (LLM inference)
  */
 
-import { ChatOpenAI } from '@langchain/openai';
-import { OpenAIEmbeddings } from '@langchain/openai';
 import { tool } from '@langchain/core/tools';
 
 export class RAGChatService {
   constructor() {
-    this.embedder = null; // OpenAI embeddings for query encoding
-    this.llm = null;
-    this.llmWithTools = null; // LLM bound with tools
     this.initialized = false;
     this.resumeData = null;
     
     // Binary index assets (cached after first load)
-    this.indexMeta = null;           // Parsed meta.json
-    this.vectors = null;              // Float32Array of shape count * dim
-    this.textsBuffer = null;           // Uint8Array buffer for texts.txt
+    this.indexMeta = null;
+    this.vectors = null;
+    this.textsBuffer = null;
     this.indexLoaded = false;
     
     // Project detection
-    this.repoNames = [];             // Unique repo names from index
-    this.projectAliases = new Map(); // normalized alias -> repo name
+    this.repoNames = [];
+    this.projectAliases = new Map();
 
-    // Conversation memory (rolling summary stored in sessionStorage)
+    // Conversation memory
     this.conversationSummary = '';
 
-    // Tool definitions (lazy-initialized in initialize())
+    // Tool definitions
     this.tools = [];
+    
+    // API endpoints (configure based on environment)
+    this.apiBaseUrl = process.env.REACT_APP_API_BASE_URL || '';
   }
 
   async loadResumeData() {
@@ -50,28 +48,11 @@ export class RAGChatService {
     if (this.initialized) return;
 
     try {
-      const apiKey = process.env.REACT_APP_OPENAI_API_KEY;
-      if (!apiKey) {
-        throw new Error('REACT_APP_OPENAI_API_KEY not found in environment');
-      }
+      // No API key needed on client side - handled by backend
+      console.log('🔐 Using secure backend proxy for OpenAI API');
 
-      // Initialize query embedder
-      this.embedder = new OpenAIEmbeddings({
-        apiKey,
-        model: process.env.REACT_APP_EMBEDDING_MODEL || 'text-embedding-3-large'
-      });
-
-      // Initialize LLM
-      this.llm = new ChatOpenAI({
-        apiKey,
-        model: process.env.REACT_APP_LLM_MODEL || 'gpt-3.5-turbo',
-        temperature: 0.2,
-        maxTokens: 900
-      });
-
-      // Build and bind tools to LLM
+      // Build tools that access resume data
       this.buildTools();
-      this.llmWithTools = this.llm.bindTools(this.tools);
 
       // Load resume data for system context
       await this.loadResumeData();
@@ -83,11 +64,11 @@ export class RAGChatService {
         throw new Error('Failed to initialize binary RAG index');
       }
       
-      // Build project alias map for robust detection
+      // Build project alias map
       this.buildProjectAliases();
 
       this.initialized = true;
-      console.log('✅ RAG initialized successfully');
+      console.log('✅ RAG initialized successfully (secure proxy mode)');
     } catch (err) {
       console.error('❌ Failed to initialize RAG:', err.message);
       this.initialized = false;
@@ -97,7 +78,13 @@ export class RAGChatService {
 
   // --- Tool Definitions ---
   buildTools() {
-    // Tool: Get experience
+    // Schema template for tools with no parameters
+    const emptySchema = {
+      type: 'object',
+      properties: {},
+      required: []
+    };
+
     const getExperienceTool = tool(
       () => {
         const experience = this.resumeData?.experience || [];
@@ -105,11 +92,11 @@ export class RAGChatService {
       },
       {
         name: 'get_experience',
-        description: 'Retrieve Gauransh\'s work experience, including companies, positions, years, descriptions, and technologies used.'
+        description: 'Retrieve Gauransh\'s work experience, including companies, positions, years, descriptions, and technologies used.',
+        schema: emptySchema
       }
     );
 
-    // Tool: Get education
     const getEducationTool = tool(
       () => {
         const education = this.resumeData?.education || [];
@@ -117,11 +104,11 @@ export class RAGChatService {
       },
       {
         name: 'get_education',
-        description: 'Retrieve Gauransh\'s education history, including schools, degrees, dates, GPA, and relevant coursework.'
+        description: 'Retrieve Gauransh\'s education history, including schools, degrees, dates, GPA, and relevant coursework.',
+        schema: emptySchema
       }
     );
 
-    // Tool: Get certifications
     const getCertificationsTool = tool(
       () => {
         const certifications = this.resumeData?.certifications || [];
@@ -129,11 +116,11 @@ export class RAGChatService {
       },
       {
         name: 'get_certifications',
-        description: 'Retrieve Gauransh\'s licenses and certifications, including title, organization, date issued, and credential ID.'
+        description: 'Retrieve Gauransh\'s licenses and certifications, including title, organization, date issued, and credential ID.',
+        schema: emptySchema
       }
     );
 
-    // Tool: Get projects
     const getProjectsTool = tool(
       () => {
         const projects = this.resumeData?.projects || [];
@@ -141,11 +128,11 @@ export class RAGChatService {
       },
       {
         name: 'get_projects',
-        description: 'Retrieve Gauransh\'s projects, including titles, descriptions, dates, technologies, and repository links.'
+        description: 'Retrieve Gauransh\'s projects, including titles, descriptions, dates, technologies, and repository links.',
+        schema: emptySchema
       }
     );
 
-    // Tool: Get skills
     const getSkillsTool = tool(
       () => {
         const skills = this.resumeData?.skills || [];
@@ -153,11 +140,11 @@ export class RAGChatService {
       },
       {
         name: 'get_skills',
-        description: 'Retrieve Gauransh\'s technical skills organized by category (e.g., languages, frameworks, tools).'
+        description: 'Retrieve Gauransh\'s technical skills organized by category (e.g., languages, frameworks, tools).',
+        schema: emptySchema
       }
     );
 
-    // Tool: Get contact info
     const getContactInfoTool = tool(
       () => {
         const socials = this.resumeData?.socials || [];
@@ -169,7 +156,8 @@ export class RAGChatService {
       },
       {
         name: 'get_contact_info',
-        description: 'Retrieve Gauransh\'s contact information and social media profiles (email, LinkedIn, GitHub, etc.).'
+        description: 'Retrieve Gauransh\'s contact information and social media profiles (email, LinkedIn, GitHub, etc.).',
+        schema: emptySchema
       }
     );
 
@@ -185,6 +173,89 @@ export class RAGChatService {
     console.log('✓ Built 6 tools for resume subsections');
   }
 
+  // --- Backend API Wrappers ---
+  
+  /**
+   * Call backend /api/embed endpoint for secure embedding generation
+   */
+  async embedQuery(userMessage) {
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/api/embed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          input: userMessage,
+          model: process.env.REACT_APP_EMBEDDING_MODEL || 'text-embedding-3-large'
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Embedding failed');
+      }
+
+      const data = await response.json();
+      const vec = new Float32Array(data.embedding);
+      return this.normalize(vec);
+    } catch (err) {
+      console.error('❌ Embedding API error:', err.message);
+      throw err;
+    }
+  }
+
+  /**
+   * Call backend /api/chat endpoint for secure LLM inference
+   * Supports tool calling via OpenAI function calling format
+   */
+  async callLLM(messages, { tools = null } = {}) {
+    try {
+      const body = {
+        messages,
+        model: process.env.REACT_APP_LLM_MODEL || 'gpt-3.5-turbo',
+        temperature: 0.2,
+        maxTokens: 900
+      };
+
+      // Convert Langchain tools to OpenAI function calling format
+      if (tools && tools.length > 0) {
+        body.tools = tools.map(t => ({
+          type: 'function',
+          function: {
+            name: t.name,
+            description: t.description,
+            parameters: t.schema || { type: 'object', properties: {}, required: [] }
+          }
+        }));
+      }
+
+      const response = await fetch(`${this.apiBaseUrl}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Chat API failed');
+      }
+
+      const data = await response.json();
+      
+      // Transform response to match Langchain format
+      return {
+        content: data.content,
+        role: data.role,
+        tool_calls: data.tool_calls?.map(tc => ({
+          name: tc.function.name,
+          args: JSON.parse(tc.function.arguments || '{}')
+        })) || []
+      };
+    } catch (err) {
+      console.error('❌ Chat API error:', err.message);
+      throw err;
+    }
+  }
+
   async loadBinaryIndex() {
     if (this.indexLoaded && this.indexMeta && this.vectors && this.textsBuffer) {
       console.log('✓ Binary index already cached, reusing...');
@@ -193,17 +264,15 @@ export class RAGChatService {
 
     const loadStart = Date.now();
     try {
-      // 1. Load and parse meta.json
       const metaResponse = await fetch('/rag/meta.json');
       if (!metaResponse.ok) throw new Error('Failed to load /rag/meta.json');
       this.indexMeta = await metaResponse.json();
 
       const { count, dim, items } = this.indexMeta;
       if (!count || !dim || !items || items.length !== count) {
-        throw new Error('Invalid meta.json: missing count, dim, or items');
+        throw new Error('Invalid meta.json');
       }
 
-      // 2. Load vectors.f32 as Float32Array
       const vectorsResponse = await fetch('/rag/vectors.f32');
       if (!vectorsResponse.ok) throw new Error('Failed to load /rag/vectors.f32');
       const arrayBuffer = await vectorsResponse.arrayBuffer();
@@ -213,7 +282,6 @@ export class RAGChatService {
         throw new Error(`Vector size mismatch: got ${this.vectors.length}, expected ${count * dim}`);
       }
 
-      // 3. Load texts.txt as Uint8Array
       const textsResponse = await fetch('/rag/texts.txt');
       if (!textsResponse.ok) throw new Error('Failed to load /rag/texts.txt');
       this.textsBuffer = new Uint8Array(await textsResponse.arrayBuffer());
@@ -228,24 +296,19 @@ export class RAGChatService {
     }
   }
 
-  // --- Project Detection Helpers ---
-
   normalizeText(text) {
-    // Normalize text for fuzzy matching
     return text
       .toLowerCase()
-      .replace(/[_-]/g, ' ')           // Replace _ and - with spaces
-      .replace(/[^a-z0-9\s]/g, '')     // Remove punctuation
-      .replace(/\s+/g, ' ')            // Collapse whitespace
+      .replace(/[_-]/g, ' ')
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, ' ')
       .trim();
   }
 
   buildProjectAliases() {
-    // Build alias map from index repos and resume projects
     this.repoNames = [];
     this.projectAliases = new Map();
 
-    // 1. Extract unique repos from index
     const repoSet = new Set();
     if (this.indexMeta?.items) {
       this.indexMeta.items.forEach(item => {
@@ -255,19 +318,16 @@ export class RAGChatService {
     }
     this.repoNames = Array.from(repoSet);
 
-    // 2. Add repo names as aliases (normalized)
     this.repoNames.forEach(repo => {
       const normalized = this.normalizeText(repo);
       this.projectAliases.set(normalized, repo);
       
-      // Add version without trailing year (e.g., "bosm roulette 2019" -> "bosm roulette")
       const withoutYear = normalized.replace(/\s+(19|20)\d{2}\s*$/, '').trim();
       if (withoutYear !== normalized) {
         this.projectAliases.set(withoutYear, repo);
       }
     });
 
-    // 3. Add resume project titles mapped to repo_name
     if (this.resumeData?.projects) {
       this.resumeData.projects.forEach(proj => {
         if (proj.title && proj.repo_name) {
@@ -277,15 +337,9 @@ export class RAGChatService {
       });
     }
 
-    // 4. Add explicit aliases for portfolio-chat (this website/project)
     const portfolioAliases = [
-      'this website',
-      'this project',
-      'this portfolio',
-      'portfolio chat',
-      'ai portfolio',
-      'rag portfolio',
-      'portfolio assistant'
+      'this website', 'this project', 'this portfolio',
+      'portfolio chat', 'ai portfolio', 'rag portfolio', 'portfolio assistant'
     ];
     portfolioAliases.forEach(alias => {
       this.projectAliases.set(alias, 'portfolio-chat');
@@ -298,19 +352,18 @@ export class RAGChatService {
     const projectList = this.resumeData?.projects
       ? JSON.stringify(this.resumeData.projects.map(p => ({ project: p.title, repo: p.repo_name })))
       : '[]';
-    // LLM fallback: ask LLM which project user is referring to
-    if (!this.llm || this.repoNames.length === 0) return null;
+    
+    if (this.repoNames.length === 0) return null;
 
     try {
-      const prompt = `User query: "${userMessage}"\n\nProject-to-repo mapping: ${projectList}\n\nWhich repo does the user's query refer to? \nRespond with ONLY the exact repo name from the "Available repos" list above, or "NONE" if no repo is mentioned.\nDo not add explanation.`;
+      const prompt = `User query: "${userMessage}"\n\nProject-to-repo mapping: ${projectList}\n\nWhich repo does the user's query refer to? \nRespond with ONLY the exact repo name from the list above, or "NONE" if no repo is mentioned.\nDo not add explanation.`;
 
-      const result = await this.llm.invoke([
+      const result = await this.callLLM([
         { role: 'user', content: prompt }
       ]);
 
       const response = (result.content || '').trim();
       
-      // Check if response is a valid repo name
       if (response !== 'NONE' && this.repoNames.includes(response)) {
         console.log(`📦 Detected project via LLM: "${response}"`);
         return response;
@@ -324,9 +377,7 @@ export class RAGChatService {
     }
   }
 
-  // --- Binary Index Retrieval ---
   normalize(vec) {
-    // Normalize vector to unit length (L2 norm)
     let norm = 0;
     for (let i = 0; i < vec.length; i++) {
       norm += vec[i] * vec[i];
@@ -341,7 +392,6 @@ export class RAGChatService {
   }
 
   dotProduct(a, b) {
-    // Compute dot product of two vectors (a.k.a. cosine similarity for L2-normalized vectors)
     let sum = 0;
     for (let i = 0; i < a.length; i++) {
       sum += a[i] * b[i];
@@ -349,15 +399,7 @@ export class RAGChatService {
     return sum;
   }
 
-  async embedQuery(userMessage) {
-    // Embed user message using OpenAI embeddings and normalize
-    const embedding = await this.embedder.embedQuery(userMessage);
-    const vec = new Float32Array(embedding);
-    return this.normalize(vec);
-  }
-
   getChunkText(itemIndex) {
-    // Retrieve and decode text for a specific chunk from texts.txt
     const item = this.indexMeta.items[itemIndex];
     if (!item) return '';
     
@@ -367,22 +409,16 @@ export class RAGChatService {
   }
 
   retrieveTopK(queryVector, { repoFilter = null, k = 10 } = {}) {
-    // Compute dot product similarity for all vectors and return top-k
     const { count, dim, items } = this.indexMeta;
     const similarities = [];
-    let filteredCount = 0;
 
     for (let i = 0; i < count; i++) {
-      // Determine repo name from items[i]
       const itemRepo = items[i].repo || items[i].project_name;
 
-      // Skip if repo filter is active and doesn't match
       if (repoFilter && itemRepo !== repoFilter) {
         continue;
       }
-      filteredCount++;
 
-      // Compute dot product directly using offset (avoid slice)
       const vectorStart = i * dim;
       let sim = 0;
       for (let j = 0; j < dim; j++) {
@@ -392,29 +428,15 @@ export class RAGChatService {
       similarities.push({ index: i, similarity: sim });
     }
 
-    // Debug log for scoped retrieval
-    if (repoFilter && similarities.length === 0) {
-      console.warn(`⚠️ Scoped retrieval returned 0 results for repo: "${repoFilter}"`);
-      console.warn(`  First item keys: ${Object.keys(items[0]).join(', ')}`);
-      console.warn(`  Filtered item count: ${filteredCount}`);
-      if (items[0]) {
-        console.warn(`  Sample item repo value: "${items[0].repo}" | project_name: "${items[0].project_name}"`);
-      }
-    }
-
-    // Sort by similarity (descending) and keep top-k
     similarities.sort((a, b) => b.similarity - a.similarity);
     return similarities.slice(0, k);
   }
 
   formatChunks(chunkIndices) {
-    // Format retrieved chunks with citations (chunk_id is already unique)
     const formatted = [];
 
     for (const idx of chunkIndices) {
       const item = this.indexMeta.items[idx];
-
-      // Build citation header
       const projectName = item.repo || item.project_name || 'Unknown';
       const filePath = item.file_path || 'N/A';
       const startLine = item.start_line;
@@ -426,7 +448,6 @@ export class RAGChatService {
       }
       sourceHeader += ']';
 
-      // Get chunk text and truncate
       const chunkText = this.getChunkText(idx);
       const maxLength = 1200;
       const truncated = chunkText.length > maxLength
@@ -434,18 +455,9 @@ export class RAGChatService {
         : chunkText;
 
       formatted.push(`${sourceHeader}\n${truncated}`);
-
     }
     
-    // Log formatting results
     console.log('🧹 Formatted context chunks:', formatted.length);
-    
-    // Log chunk previews (safe - first 120 chars only)
-    formatted.forEach((chunk, i) => {
-      const preview = chunk.split('\n')[1]?.slice(0, 120) || chunk.slice(0, 120);
-      console.log(`📄 Context chunk ${i + 1} preview:`, preview + '...');
-    });
-
     return formatted.join('\n\n---\n\n');
   }
 
@@ -457,12 +469,12 @@ export class RAGChatService {
     return `You are the official AI Portfolio Assistant for **Gauransh Sawhney**, a Full-stack / AI / ML software engineer and graduate student.
       Your role is to represent Gauransh professionally, accurately, and conservatively.
 
-      ## � Context Recognition
+      ## 🎯 Context Recognition
       **This Website / This Project refers to:** "portfolio-chat" (the AI-powered portfolio RAG system you're running in)
       When users ask about "this website", "this project", "portfolio chat", or the portfolio assistant itself, they're asking about the portfolio-chat project.
       Use the get_projects tool to reference its details if needed.
 
-      ## �🔒 Core Rules
+      ## 🔒 Core Rules
       1. **Ground everything:** Only cite information explicitly available via tools, retrieved context, or your training knowledge about public projects.
       2. **Be honest:** If you don't have a detail, say "I don't have that specific information."
       3. **Cite sources:** When referencing code or technical details, mention the project name and source.
@@ -519,9 +531,7 @@ export class RAGChatService {
     let bestScore = 0;
     let matchReason = '';
 
-    // Check each alias for matches
     for (const [alias, repoName] of this.projectAliases.entries()) {
-      // Exact inclusion match (highest priority)
       if (normalizedMsg.includes(alias)) {
         if (!bestMatch || alias.length > matchReason.length) {
           bestMatch = repoName;
@@ -531,13 +541,11 @@ export class RAGChatService {
         continue;
       }
 
-      // Token overlap (Jaccard similarity)
       const aliasTokens = new Set(alias.split(' ').filter(t => t.length > 0));
       const intersection = new Set([...msgTokens].filter(t => aliasTokens.has(t)));
       const union = new Set([...msgTokens, ...aliasTokens]);
       const jaccard = intersection.size / union.size;
 
-      // Require minimum overlap of 0.5
       if (jaccard >= 0.5 && jaccard > bestScore) {
         bestMatch = repoName;
         bestScore = jaccard;
@@ -550,13 +558,10 @@ export class RAGChatService {
       return bestMatch;
     }
     
-    // If no alias match, mark for async LLM fallback (will be called in query())
     return null;
   }
 
-  // --- Agentic Tool Loop ---
   async executeToolCall(toolName, toolInput) {
-    // Execute a tool call and return the result
     const tool = this.tools.find(t => t.name === toolName);
     if (!tool) {
       console.warn(`⚠️ Tool not found: ${toolName}`);
@@ -573,31 +578,26 @@ export class RAGChatService {
   }
 
   async agenticLoop(systemPrompt, messages, maxIterations = 3) {
-    // Run agentic loop: LLM → check for tool calls → execute → add results → repeat
     let currentMessages = [...messages];
     let iteration = 0;
 
     while (iteration < maxIterations) {
       iteration++;
-      console.log(`� Agentic loop iteration ${iteration}/${maxIterations}`);
+      console.log(`🔄 Agentic loop iteration ${iteration}/${maxIterations}`);
 
-      // Call LLM with tools bound
-      const response = await this.llmWithTools.invoke([
-        { role: 'system', content: systemPrompt },
-        ...currentMessages
-      ]);
+      const response = await this.callLLM(
+        [{ role: 'system', content: systemPrompt }, ...currentMessages],
+        { tools: this.tools }
+      );
 
-      // Check if response has tool calls
       if (response.tool_calls && response.tool_calls.length > 0) {
         console.log(`🔧 LLM called ${response.tool_calls.length} tool(s)`);
 
-        // Add LLM response to message history
         currentMessages.push({
           role: 'assistant',
           content: response.content || ''
         });
 
-        // Execute each tool call sequentially
         for (const toolCall of response.tool_calls) {
           const toolName = toolCall.name;
           const toolInput = toolCall.args || {};
@@ -605,16 +605,12 @@ export class RAGChatService {
           console.log(`  → Executing: ${toolName}`);
           const toolResult = await this.executeToolCall(toolName, toolInput);
 
-          // Add tool result to message history
           currentMessages.push({
             role: 'user',
             content: `[Tool Result from ${toolName}]:\n${toolResult}`
           });
         }
-
-        // Continue loop to get final response from LLM
       } else {
-        // No tool calls, return final response
         console.log(`✓ Agentic loop complete (no more tool calls)`);
         return {
           text: response.content || '',
@@ -623,7 +619,6 @@ export class RAGChatService {
       }
     }
 
-    // Max iterations reached, return current response
     console.warn(`⚠️ Max iterations (${maxIterations}) reached`);
     const lastResponse = currentMessages[currentMessages.length - 1];
     return {
@@ -633,47 +628,33 @@ export class RAGChatService {
   }
 
   async query(userMessage, history = []) {
-    if (!this.embedder || !this.llmWithTools || !this.initialized || !this.indexLoaded) {
-      console.warn('⚠️ RAG not ready; using resume-only context');
+    if (!this.initialized || !this.indexLoaded) {
+      console.warn('⚠️ RAG not ready; using fallback');
       return this.queryFallback(userMessage, history);
     }
 
     try {
       const queryStart = Date.now();
       
-      // A) Log user query and project detection
       console.log('🧠 User query:', userMessage);
       let targetRepo = this.detectProjectContext(userMessage);
       
-      // If no alias match found, try LLM fallback
       if (!targetRepo) {
         console.log('🧠 No alias match; trying LLM fallback...');
         targetRepo = await this.detectProjectContextViaLLM(userMessage);
       }
       
       console.log('📦 Detected project:', targetRepo || 'none');
-      
-      // B) Log retrieval mode
       console.log('🔍 Retrieval mode:', targetRepo ? `scoped (repo: ${targetRepo})` : 'broad');
 
-      // Embed query and retrieve top-k (RAG context for code/implementation details)
       const queryVector = await this.embedQuery(userMessage);
       const topKResults = this.retrieveTopK(queryVector, {
         repoFilter: targetRepo,
         k: 10
       });
       
-      // C) Log raw retrieval results
       console.log('📊 Raw retrieval hits:', topKResults.length);
-      if (topKResults.length > 0) {
-        console.log('📊 Top 3 hits:', topKResults.slice(0, 3).map(h => ({
-          similarity: h.similarity.toFixed(4),
-          repo: this.indexMeta.items[h.index].repo || this.indexMeta.items[h.index].project_name,
-          path: this.indexMeta.items[h.index].file_path
-        })));
-      }
 
-      // Format RAG context (only if retrieval hits found)
       let formattedContext = '';
       let sourceDocuments = [];
       if (topKResults.length > 0) {
@@ -685,29 +666,24 @@ export class RAGChatService {
         }));
       }
 
-      // Build lightweight system prompt with RAG context (if any)
       const systemPrompt = this.buildSystemPrompt(formattedContext);
       const recentHistory = history.slice(-6);
 
-      // Add conversation summary if available
       const summary = this.getConversationSummary();
       if (summary) {
         recentHistory.unshift({ role: 'system', content: `Conversation Summary:\n${summary}` });
       }
 
-      // Run agentic loop: tools will be available for LLM to call on-demand
       const agenticResult = await this.agenticLoop(systemPrompt, [
         ...recentHistory,
         { role: 'user', content: userMessage }
       ]);
 
       const queryTime = Date.now() - queryStart;
-      const topSimilarity = topKResults[0]?.similarity?.toFixed(3) || 'N/A';
-      console.log(`✓ Query completed in ${queryTime}ms, retrieved ${topKResults.length} chunks (top similarity: ${topSimilarity}), agentic iterations: ${agenticResult.iterations}`);
+      console.log(`✓ Query completed in ${queryTime}ms, retrieved ${topKResults.length} chunks, agentic iterations: ${agenticResult.iterations}`);
 
       const responseText = this.normalizeEmails(agenticResult.text);
 
-      // Update conversation summary asynchronously
       this.updateConversationSummaryAsync([
         ...recentHistory.filter(m => m.role !== 'system'),
         { role: 'user', content: userMessage },
@@ -727,9 +703,6 @@ export class RAGChatService {
   async queryFallback(userMessage, history = []) {
     console.log('📋 Using fallback mode (tools available, no RAG context)');
     try {
-      if (!this.llmWithTools) throw new Error('LLM not initialized');
-
-      // Lightweight fallback prompt with just identity + tools available
       const fallbackSystemPrompt = `You are Gauransh Sawhney's portfolio assistant. 
         Answer questions about Gauransh's experience, education, projects, and skills.
         Use the available tools to access resume details on demand.
@@ -737,7 +710,6 @@ export class RAGChatService {
 
       const recentHistory = history.slice(-4);
 
-      // Run agentic loop with fallback prompt
       const agenticResult = await this.agenticLoop(fallbackSystemPrompt, [
         ...recentHistory,
         { role: 'user', content: userMessage }
@@ -756,12 +728,7 @@ export class RAGChatService {
     }
   }
 
-  // --- Email Normalization Helper ---
   normalizeEmails(text) {
-    // Convert emails to markdown mailto links (idempotent - safe to call multiple times)
-    // Preserves code blocks (```) and existing mailto links
-    // Does nothing if mailto: already appears in the same email string
-    
     const parts = text.split(/(```[\s\S]*?```)/);
     
     return parts.map((part, index) => {
@@ -769,7 +736,6 @@ export class RAGChatService {
       
       let result = part;
       
-      // Pre-scan for existing mailto links to avoid duplicate conversions
       const existingMailtoEmails = new Set();
       const mailtoRegex = /\(mailto:([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\)/g;
       let mailtoMatch;
@@ -777,29 +743,17 @@ export class RAGChatService {
         existingMailtoEmails.add(mailtoMatch[1]);
       }
       
-      // 1. Convert [email] -> [email](mailto:email) only if not already followed by (mailto:...)
       result = result.replace(/\[([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\](?!\(mailto:)/g, (match, email) => {
-        // Skip if already converted to mailto
-        if (existingMailtoEmails.has(email)) {
-          return match;
-        }
+        if (existingMailtoEmails.has(email)) return match;
         return `[${email}](mailto:${email})`;
       });
       
-      // 2. Convert plain emails -> [email](mailto:email)
-      // Skip if email is already in a mailto link or surrounded by markdown syntax
       result = result.replace(/\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g, (match, email) => {
-        // Skip if already converted to mailto
-        if (existingMailtoEmails.has(email)) {
-          return match;
-        }
+        if (existingMailtoEmails.has(email)) return match;
         
-        // Check if email is preceded by (mailto: or ]( (already in a link)
         const idx = result.indexOf(match);
         const before = result.substring(Math.max(0, idx - 8), idx);
-        if (before.includes('mailto:') || before.endsWith('](')) {
-          return match;
-        }
+        if (before.includes('mailto:') || before.endsWith('](')) return match;
         
         return `[${email}](mailto:${email})`;
       });
@@ -808,7 +762,6 @@ export class RAGChatService {
     }).join('');
   }
 
-  // --- Conversation Memory (Rolling Summary) ---
   getConversationSummary() {
     try {
       if (!this.conversationSummary) {
@@ -825,9 +778,7 @@ export class RAGChatService {
     this.conversationSummary = summary || '';
     try {
       sessionStorage.setItem('conversationSummary', this.conversationSummary);
-    } catch (_) {
-      // ignore storage errors
-    }
+    } catch (_) {}
   }
 
   buildSummaryPrompt(existingSummary, messages) {
@@ -847,21 +798,19 @@ export class RAGChatService {
     try {
       const existing = this.getConversationSummary();
       const prompt = this.buildSummaryPrompt(existing, messages);
-      // Fire-and-forget to avoid blocking the main query
-      this.llm.invoke([
+      
+      this.callLLM([
         { role: 'system', content: 'You are a summarizer that outputs ONLY the updated summary.' },
         { role: 'user', content: prompt }
       ]).then(res => {
         const updated = (res?.content || '').trim();
         if (updated) this.setConversationSummary(updated);
-      }).catch(() => { /* ignore */ });
-    } catch (_) {
-      // ignore summarization errors
-    }
+      }).catch(() => {});
+    } catch (_) {}
   }
 
   isReady() {
-    return this.initialized && this.embedder !== null && this.llm !== null && this.indexLoaded;
+    return this.initialized && this.indexLoaded;
   }
 
   getStatus() {
@@ -869,7 +818,7 @@ export class RAGChatService {
       initialized: this.initialized,
       ready: this.isReady(),
       indexLoaded: this.indexLoaded,
-      apiKey: process.env.REACT_APP_OPENAI_API_KEY ? 'configured' : 'missing'
+      proxyMode: true
     };
   }
 }
