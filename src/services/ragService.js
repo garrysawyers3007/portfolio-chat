@@ -58,7 +58,7 @@ export class RAGChatService {
       // Initialize query embedder
       this.embedder = new OpenAIEmbeddings({
         apiKey,
-        model: 'text-embedding-3-large'
+        model: process.env.REACT_APP_EMBEDDING_MODEL || 'text-embedding-3-large'
       });
 
       // Initialize LLM
