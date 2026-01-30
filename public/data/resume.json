@@ -37,7 +37,7 @@
         "highlight": "Deep learning model comparison achieving 5% MAE improvement",
         "featured": false,
         "date": "Sep 2024 - Dec 2024",
-        "description": "Automatic image colorization via deep learning (CNN, U-Net, ResNet 18, GANs). Improved color fidelity: MAE 0.0848→0.0807, LPIPS 0.132→0.148.",
+        "description": "Automatic image colorization via deep learning (CNN, U-Net, ResNet 18, GANs). Improved color fidelity: MAE 0.0848→0.0807, LPIPS 0.148→0.132.",
         "technologies": ["Computer Vision", "Python", "PyTorch", "Deep Learning"],
         "url": "https://github.com/garrysawyers3007/Image-Colouration",
         "repo_name": "Image-Colouration"
