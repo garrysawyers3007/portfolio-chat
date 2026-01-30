@@ -28607,182 +28607,95 @@ const axiosHeaders = {
 	}
 };
 export { baseUrl, axiosHeaders }
-# Portfolio Chat - AI Agent Guide
+# Portfolio Chat – Copilot Instructions
 
-**Quick Overview:** React portfolio with client-side RAG chatbot. Binary vector index + OpenAI Embeddings + Langchain LLM. No backend server needed. Everything runs in the browser.
+## Big picture
+- **Client-side React 19 portfolio** with RAG chatbot; **secure backend proxy** protects OpenAI API key. Chat flow: [src/services/chatAPIClient.js](src/services/chatAPIClient.js) → [src/services/ragService-secure.js](src/services/ragService-secure.js) → [api/embed.js](api/embed.js) + [api/chat.js](api/chat.js) → UI in [src/components/ChatHistory.js](src/components/ChatHistory.js).
+- **Agentic architecture**: LLM can call 6 resume tools on-demand (`get_experience`, `get_education`, `get_projects`, `get_skills`, `get_certifications`, `get_contact_info`) via OpenAI function calling with proper JSON Schema validation. Tools in [src/services/ragService.js#L92](src/services/ragService.js#L92) with `emptySchema` ({type: 'object', properties: {}, required: []}). Agentic loop runs max 3 iterations: LLM → detect tool calls → execute tools → inject results → LLM final response.
+- **Binary vector index**: Pre-computed embeddings stored in [public/rag/](public/rag/) (meta.json for metadata, vectors.f32 for Float32 embeddings, texts.txt for chunk content). Resume content is single source of truth in [public/data/resume.json](public/data/resume.json).
+- **Action tags**: Responses ending with `>` trigger auto-scroll to page sections. Parsed/stripped by ChatHistory regex; target sections have IDs in [src/pages/](src/pages/) components.
+## Big picture
+- **Client-side React 19 portfolio** with RAG chatbot; **secure backend proxy** protects OpenAI API key. Chat flow: [src/services/chatAPIClient.js](src/services/chatAPIClient.js) → [src/services/ragService-secure.js](src/services/ragService-secure.js) → [api/embed.js](api/embed.js) + [api/chat.js](api/chat.js) → UI in [src/components/ChatHistory.js](src/components/ChatHistory.js).
+- **Agentic architecture**: LLM can call 6 resume tools on-demand (`get_experience`, `get_education`, `get_projects`, `get_skills`, `get_certifications`, `get_contact_info`) via OpenAI function calling with proper JSON Schema validation. Tools in [src/services/ragService.js#L92](src/services/ragService.js#L92) with `emptySchema` ({type: 'object', properties: {}, required: []}). Agentic loop runs max 3 iterations: LLM → detect tool calls → execute tools → inject results → LLM final response.
+- **Binary vector index**: Pre-computed embeddings stored in [public/rag/](public/rag/) (meta.json for metadata, vectors.f32 for Float32 embeddings, texts.txt for chunk content). Resume content is single source of truth in [public/data/resume.json](public/data/resume.json).
+- **Action tags**: Responses ending with `>` trigger auto-scroll to page sections. Parsed/stripped by ChatHistory regex; target sections have IDs in [src/pages/](src/pages/) components.
+## Big picture
+- **Client-side React 19 portfolio** with RAG chatbot; **secure backend proxy** protects OpenAI API key. Chat flow: [src/services/chatAPIClient.js](src/services/chatAPIClient.js) → [src/services/ragService-secure.js](src/services/ragService-secure.js) → [api/embed.js](api/embed.js) + [api/chat.js](api/chat.js) → UI in [src/components/ChatHistory.js](src/components/ChatHistory.js).
+- **Agentic architecture**: LLM can call 6 resume tools on-demand (`get_experience`, `get_education`, `get_projects`, `get_skills`, `get_certifications`, `get_contact_info`) via OpenAI function calling with proper JSON Schema validation. Tools in [src/services/ragService.js#L92](src/services/ragService.js#L92) with `emptySchema` ({type: 'object', properties: {}, required: []}). Agentic loop runs max 3 iterations: LLM → detect tool calls → execute tools → inject results → LLM final response.
+- **Binary vector index**: Pre-computed embeddings stored in [public/rag/](public/rag/) (meta.json for metadata, vectors.f32 for Float32 embeddings, texts.txt for chunk content). Resume content is single source of truth in [public/data/resume.json](public/data/resume.json).
+- **Action tags**: Responses ending with `>` trigger auto-scroll to page sections. Parsed/stripped by ChatHistory regex; target sections have IDs in [src/pages/](src/pages/) components.
+- **Client-side React 19 portfolio** with RAG chatbot; **secure backend proxy** protects OpenAI API key. Chat flow: [src/services/chatAPIClient.js](src/services/chatAPIClient.js) → [src/services/ragService-secure.js](src/services/ragService-secure.js) → [api/embed.js](api/embed.js) + [api/chat.js](api/chat.js) → UI in [src/components/ChatHistory.js](src/components/ChatHistory.js).
+- **Agentic architecture**: LLM can call 6 resume tools on-demand (`get_experience`, `get_education`, `get_projects`, `get_skills`, `get_certifications`, `get_contact_info`) via OpenAI function calling with proper JSON Schema validation. Tools in [src/services/ragService.js#L92](src/services/ragService.js#L92) with `emptySchema` ({type: 'object', properties: {}, required: []}). Agentic loop runs max 3 iterations: LLM → detect tool calls → execute tools → inject results → LLM final response.
+- **Binary vector index**: Pre-computed embeddings stored in [public/rag/](public/rag/) (meta.json for metadata, vectors.f32 for Float32 embeddings, texts.txt for chunk content). Resume content is single source of truth in [public/data/resume.json](public/data/resume.json).
+- **Action tags**: Responses ending with `>` trigger auto-scroll to page sections. Parsed/stripped by ChatHistory regex; target sections have IDs in [src/pages/](src/pages/) components.
+- **Agentic architecture**: LLM can call 6 resume tools on-demand (`get_experience`, `get_education`, `get_projects`, `get_skills`, `get_certifications`, `get_contact_info`) via OpenAI function calling with proper JSON Schema validation. Tools in [src/services/ragService.js#L92](src/services/ragService.js#L92) with `emptySchema` ({type: 'object', properties: {}, required: []}). Agentic loop runs max 3 iterations: LLM → detect tool calls → execute tools → inject results → LLM final response.
+- **Binary vector index**: Pre-computed embeddings stored in [public/rag/](public/rag/) (meta.json for metadata, vectors.f32 for Float32 embeddings, texts.txt for chunk content). Resume content is single source of truth in [public/data/resume.json](public/data/resume.json).
+- **Action tags**: Responses ending with `>` trigger auto-scroll to page sections. Parsed/stripped by ChatHistory regex; target sections have IDs in [src/pages/](src/pages/) components.
+- **Security model**: Vercel Serverless Functions (`/api/embed`, `/api/chat`) proxy OpenAI requests. API key stored as `OPENAI_API_KEY` (no `REACT_APP_` prefix) in Vercel environment variables only.
 
-## Core Architecture
-### Data Flow (All Client-Side)
-```
-User Query → ChatAPIClient → RAGService:
- 1. Query Embedding (OpenAI text-embedding-3-large)
- 2. Similarity Search (dot product on Float32 vectors)
- 3. Chunk Deduplication (by chunk_id)
- 4. LLM Inference (gpt-3.5-turbo or gpt-4)
- 5. Email Link Normalization
-→ Response with Action Tags → ChatHistory Parser → Auto-scroll Navigation
-```
+## Project-specific patterns
+- **Backend proxy architecture**: Client calls `/api/embed` and `/api/chat` Vercel serverless functions instead of OpenAI directly. API key secured server-side as `OPENAI_API_KEY` (no `REACT_APP_` prefix).
+- **Binary vector index**: Pre-computed embeddings stored in [public/rag/](public/rag/) (meta.json for metadata, vectors.f32 for Float32 embeddings, texts.txt for chunk content). Resume content is single source of truth in [public/data/resume.json](public/data/resume.json).
+- **Action tags**: Responses ending with `>` trigger auto-scroll to page sections. Parsed/stripped by ChatHistory regex; target sections have IDs in [src/pages/](src/pages/) components.
+- **Security model**: Vercel Serverless Functions (`/api/embed`, `/api/chat`) proxy OpenAI requests. API key stored as `OPENAI_API_KEY` (no `REACT_APP_` prefix) in Vercel environment variables only.
 
-**Key Files:**
-- [src/services/ragService.js](src/services/ragService.js) - Binary index retrieval + LLM prompting + project detection (~600 lines)
-- [src/services/chatAPIClient.js](src/services/chatAPIClient.js) - Client-side Langchain wrapper (~50 lines)
-- [src/components/ChatHistory.js](src/components/ChatHistory.js) - Message display + action tag parser + formatting
-- [src/App.js](src/App.js) - Root state (messages, theme, chat visibility) + initialization
-- [public/data/resume.json](public/data/resume.json) - Portfolio content (experience, education, projects, skills, socials)
-- [public/rag/](public/rag/) - Binary index assets (meta.json, vectors.f32, texts.txt)
+## Project-specific patterns
+- **Backend proxy architecture**: Client calls `/api/embed` and `/api/chat` Vercel serverless functions instead of OpenAI directly. API key secured server-side as `OPENAI_API_KEY` (no `REACT_APP_` prefix).
+- **RAG pipeline**: Client-side embedding via `/api/embed` → dot-product similarity search (cosine for L2-normalized vectors) → format top-K chunks with citations → inject into system prompt. Scoped retrieval: project detection via Jaccard similarity on aliases OR LLM fallback, then filter vectors by `repo` field (k=8 for scoped, k=10 for broad).
+- **Action tags**: Responses ending with `>` trigger auto-scroll to page sections. Parsed/stripped by ChatHistory regex; target sections have IDs in [src/pages/](src/pages/) components.
+- **Security model**: Vercel Serverless Functions (`/api/embed`, `/api/chat`) proxy OpenAI requests. API key stored as `OPENAI_API_KEY` (no `REACT_APP_` prefix) in Vercel environment variables only.
 
-**NO backend server** - `server.js` is deprecated (see [CLIENT_SIDE_MIGRATION.md](CLIENT_SIDE_MIGRATION.md))
+## Project-specific patterns
+- **Backend proxy architecture**: Client calls `/api/embed` and `/api/chat` Vercel serverless functions instead of OpenAI directly. API key secured server-side as `OPENAI_API_KEY` (no `REACT_APP_` prefix).
+- **RAG pipeline**: Client-side embedding via `/api/embed` → dot-product similarity search (cosine for L2-normalized vectors) → format top-K chunks with citations → inject into system prompt. Scoped retrieval: project detection via Jaccard similarity on aliases OR LLM fallback, then filter vectors by `repo` field (k=8 for scoped, k=10 for broad).
+- **Message formatting**: [ChatHistory.js](src/components/ChatHistory.js) pipeline: parse `[label](url)` links → bold `**text**` → strip action tags regex `/?>?/g`.
+- **Theme system**: CSS variables only ([src/index.css](src/index.css)). No CSS-in-JS. Toggle via `document.documentElement.dataset.theme` (dark|light). Set in [src/App.js](src/App.js) localStorage + [src/components/TopNav.js](src/components/TopNav.js).
+## Project-specific patterns
+- **Backend proxy architecture**: Client calls `/api/embed` and `/api/chat` Vercel serverless functions instead of OpenAI directly. API key secured server-side as `OPENAI_API_KEY` (no `REACT_APP_` prefix).
+- **RAG pipeline**: Client-side embedding via `/api/embed` → dot-product similarity search (cosine for L2-normalized vectors) → format top-K chunks with citations → inject into system prompt. Scoped retrieval: project detection via Jaccard similarity on aliases OR LLM fallback, then filter vectors by `repo` field (k=8 for scoped, k=10 for broad).
+- **Message formatting**: [ChatHistory.js](src/components/ChatHistory.js) pipeline: parse `[label](url)` links → bold `**text**` → strip action tags regex `/?>?/g`.
+- **Theme system**: CSS variables only ([src/index.css](src/index.css)). No CSS-in-JS. Toggle via `document.documentElement.dataset.theme` (dark|light). Set in [src/App.js](src/App.js) localStorage + [src/components/TopNav.js](src/components/TopNav.js).
+- **Factory pattern**: Reusable handlers via factory functions (e.g., `createScrollHandler`, `createMessageFormatter`). Avoid inline styles; use shared utilities in [src/App.css](src/App.css) (`.section`, `.card`, `.btn`).
 
-## Critical Patterns
-### 1. Binary Index RAG (Custom, No External Vector Libs)
+## Workflows
+- **RAG pipeline**: Client-side embedding via `/api/embed` → dot-product similarity search (cosine for L2-normalized vectors) → format top-K chunks with citations → inject into system prompt. Scoped retrieval: project detection via Jaccard similarity on aliases OR LLM fallback, then filter vectors by `repo` field (k=8 for scoped, k=10 for broad).
+- **Message formatting**: [ChatHistory.js](src/components/ChatHistory.js) pipeline: parse `[label](url)` links → bold `**text**` → strip action tags regex `/?>?/g`.
+- **Theme system**: CSS variables only ([src/index.css](src/index.css)). No CSS-in-JS. Toggle via `document.documentElement.dataset.theme` (dark|light). Set in [src/App.js](src/App.js) localStorage + [src/components/TopNav.js](src/components/TopNav.js).
+- **Factory pattern**: Reusable handlers via factory functions (e.g., `createScrollHandler`, `createMessageFormatter`). Avoid inline styles; use shared utilities in [src/App.css](src/App.css) (`.section`, `.card`, `.btn`).
 
-**Assets in `/public/rag/`:**
-- `meta.json` - Metadata (count, dim, items[] with file_path, repo/project_name, chunk_id, text_offset, text_length, start_line, end_line)
-- `vectors.f32` - Pre-computed L2-normalized embeddings (Float32Array, count × 1536)
-- `texts.txt` - Concatenated UTF-8 chunk texts
+## Workflows
+- **Local dev with Vercel Functions**: `npm install` then `vercel dev` (NOT `npm start`—CRA dev server doesn't handle `/api` routes). Tests: `npm test`. Production build: `npm run build`.
+- **Environment variables**:
+ - Local: Create `.env` file (not `.env.local`) with `OPENAI_API_KEY=sk-...` for `vercel dev`
+ - Or pass via CLI: `OPENAI_API_KEY=sk-... vercel dev`
+## Workflows
+- **Local dev with Vercel Functions**: `npm install` then `vercel dev` (NOT `npm start`—CRA dev server doesn't handle `/api` routes). Tests: `npm test`. Production build: `npm run build`.
+- **Environment variables**:
+ - Local: Create `.env` file (not `.env.local`) with `OPENAI_API_KEY=sk-...` for `vercel dev`
+ - Or pass via CLI: `OPENAI_API_KEY=sk-... vercel dev`
+ - Or sync from Vercel: `vercel env pull` then `vercel dev`
+ - Client-side (safe to expose): `REACT_APP_LLM_MODEL`, `REACT_APP_EMBEDDING_MODEL`, `REACT_APP_RAG_ENABLED`
+- **Vercel deployment**: Set `OPENAI_API_KEY` in Vercel Dashboard (Project Settings → Environment Variables). API routes in `/api` auto-deploy.
+- **Adding/changing resume data**: Edit [public/data/resume.json](public/data/resume.json) and regenerate the RAG index assets in [public/rag/](public/rag/) (see [CLIENT_SIDE_MIGRATION.md](CLIENT_SIDE_MIGRATION.md)).
 
-**Retrieval Process (ragService.js):**
-1. **embedQuery()** - Convert user message to embedding via OpenAI text-embedding-3-large, normalize to L2
-2. **retrieveTopK()** - Compute dot-product similarity for all vectors, sort descending, return top-k
-3. **dedupeAndFormatChunks()** - Deduplicate by `chunk_id` (eliminate duplicates across repos), format with citations
-4. **LLM invocation** - Pass system prompt + retrieved context + conversation history to gpt-3.5-turbo/gpt-4
-
-**Project Detection (before retrieval):**
-- **detectProjectContext()** - Match user query against `projectAliases` map (normalized project titles)
-- If no alias match, **detectProjectContextViaLLM()** - Ask LLM which project user references
-- Use `repoFilter` to scope retrieval to matching project only (8 chunks scoped vs 10 chunks broad)
-
-**Why binary format?**
-- Faster load (~100ms vs seconds for JSON)
-- Lower memory (binary vs JSON arrays)
-- Enables O(1) text retrieval by offset (no deserialization per chunk)
-- Use `repoFilter` to scope retrieval to matching project only (8 chunks scoped vs 10 chunks broad)
-
-**Why binary format?**
-- Faster load (~100ms vs seconds for JSON)
-- Lower memory (binary vs JSON arrays)
-- Enables O(1) text retrieval by offset (no deserialization per chunk)
-- Simple dot-product similarity (no external vector libs needed)
-### 2. Action Tags for Auto-Navigation (Silent Protocol)
-
-**Format:** `>` (double angle brackets, uppercase, ends response)
-
-**Valid Actions:** `SCROLL_ABOUT`, `SCROLL_EDUCATION`, `SCROLL_EXPERIENCE`, `SCROLL_PROJECTS`, `SCROLL_CERTIFICATIONS`, `SCROLL_CONTACT`
-
-**Implementation (ChatHistory.js):**
-- **Detection (lines 121-125):** Regex `/?>?/g` matches tags with or without brackets
-- **Stripping:** Remove tags from display text via regex
-- **Execution:** Detect action type → close chat → setTimeout 300ms → scrollIntoView() target element
-
-**Example in LLM Response:**
-```
-"Check out the Image Coloration project—it uses PyTorch for real-time processing. >"
-```
-
-**LLM System Prompt Instructions (ragService.js line ~425-433):**
-- Append EXACTLY ONE action tag at end if response maps to navigation intent
-- No narration ("Let me scroll you...") — silent navigation only
-- If no clear navigation intent, omit tag entirely
-- Valid keyword mappings:
- - "Projects"/"GitHub"/"Code" → `>`
- - "Work"/"Job"/"Internship" → `>`
- - "Degree"/"University"/"GPA" → `>`
- - "Licenses"/"Certifications"/"Credentials" → `>`
- - "Contact"/"Email"/"LinkedIn" → `>`
-### 3. CSS Variables & Theme System (Design Tokens)
-
-**All styling defined in [src/index.css](src/index.css) (lines 1–100):**
-- Dark theme (default): `--bg: #0B0F19`, `--text: #E5E7EB`, `--primary: #22D3EE` (neon cyan)
-- Light theme: `--bg: #F1F5F9`, `--text: #0F172A`, `--primary: #0EA5E9` (bright blue)
-- All sizes, spacing, transitions also tokenized (--space-*, --radius, --transition-*)
-
-**Theme Switching Mechanism:**
-- Controlled by `document.documentElement.dataset.theme` ("dark" or "light")
-- TopNav.js detects system preference on mount via `window.matchMedia('(prefers-color-scheme)')`
-- Single attribute change cascades to all components (no re-renders needed)
-
-**Usage Rules:**
-- ✅ ALWAYS use CSS variables (`color: var(--text)`) — NEVER hardcoded colors
-- ✅ PREFER shared utilities (`.section`, `.card`, `.chip`, `.btn` from App.css)
-- ✅ Semantic HTML + flex/grid for layout (avoid absolute positioning)
-- ✅ ALL interactive elements MUST have `:focus-visible` styles
-- ✅ ALL animations MUST respect `@media (prefers-reduced-motion: reduce)` (see App.js lines 23–37)
-- ❌ NEVER inline styles (`style={{}}`) except for truly dynamic values
-- ❌ NEVER hardcoded colors/spacing/borders
-### 4. Message Formatting & Link Parsing (ChatHistory.js)
-
-**Three-stage formatting pipeline:**
-1. **Link Parsing** - `[label](url)` → `{label}` (supports mailto: links)
-2. **Bold Parsing** - `**text**` → `text`
-3. **Email Normalization** - Plain emails auto-converted to `[email](mailto:email)` by ragService.normalizeEmails()
-
-**Factory Pattern for DRY Code (ChatHistory.js):**
-```javascript
-const createScrollHandler = (sectionId) => () => {
- onCloseChat();
- setTimeout(() => document.getElementById(sectionId)?.scrollIntoView(), 300);
-};
-
-// Reuse for all 5 sections
-const handleScrollToEducation = createScrollHandler('education');
-const handleScrollToProjects = createScrollHandler('projects');
-```
-**Why:** Eliminates repeated setTimeout + scrollIntoView logic 5+ times
-### 5. React Hooks & State Management
-
-**Key patterns in App.js:**
-- **useRef** - `containerRef`, `nudgeTimeoutRef` for DOM access and cleanup
-- **useEffect** - Initialize RAG service once on mount, cleanup timers on unmount
-- **useState** - `messages[]`, `isLoading`, `isChatVisible`, `theme` (lifted to App root)
-- **useCallback** - Debounce handlers to 300-500ms (input area, text processing)
-- **React.memo()** - Wrap expensive list items (Projects cards, Education timelines) to avoid re-renders
-- **Custom Hook: useInputNudge** - Session-scoped nudge animation for new users (respects prefers-reduced-motion)
-
-**Message History Structure:**
-```javascript
-[
- { role: 'user', content: 'Tell me about X' },
- { role: 'assistant', content: 'Response with >' }
-]
-```
-- Passed to RAGService.query() for context window (truncate to last 6 messages)
-- ChatHistory renders in reverse order (newest at bottom, auto-scroll on update)
-### 6. Conversation Memory (Rolling Summary in sessionStorage)
-
-**Pattern (ragService.js ~678–724):**
-- **getConversationSummary()** - Retrieves persisted summary from sessionStorage
-- **setConversationSummary()** - Stores summary in sessionStorage (survives page reload within session)
-- **updateConversationSummaryAsync()** - Fire-and-forget LLM call to compress recent turns into concise bullet points (?>?/g`
-2. Check target element exists: `id="projects"`, `id="education"`, etc. (see page JS files)
-3. Check browser console for scroll errors
-4. Verify LLM response includes tag at **very end** of message
-
-**Update theme colors:**
-1. Edit [src/index.css](src/index.css) → CSS variables in `:root[data-theme="dark/light"]`
-2. Component CSS files inherit variables automatically
-3. Test both dark/light modes: TopNav theme toggle tests both
-
-## Code Standards (Enforced)
-### CSS Rules
-- ✅ ALWAYS use CSS variables from [src/index.css](src/index.css)
-- ✅ PREFER shared utilities (`.section`, `.card`, `.chip`, `.btn`)
-- ✅ ALL interactive elements MUST have `:focus-visible` styles (accessibility)
-- ✅ ALL animations MUST respect `@media (prefers-reduced-motion: reduce)`
-- ✅ Use semantic HTML (``, ``, not ``)
-- ❌ NEVER inline styles (`style={{}}`) unless computing dynamic values
-- ❌ NEVER hardcoded colors/spacing/radii
-### React Hooks
-- ✅ Call hooks at top level BEFORE conditional returns
-- ✅ Debounce user input (300-500ms via useCallback)
-- ✅ Use React.memo() for list items (Projects, Education cards)
-- ✅ Cleanup side effects: always return cleanup function from useEffect
-- ❌ NEVER call hooks inside conditions or loops
-### Langchain & LLM
-- ✅ Initialize embedder once in `RAGService.initialize()` on App mount
+## Gotchas
+- `server.js` is deprecated; keep changes client-side only.
+- Action tag must be the final characters in the model reply (e.g., `... >`) to trigger scroll.
+- Section ids expected by scroll tags: `about-me`, `education`, `experience`, `projects`, `certifications`, `contact`.
+- ✅ Tool schemas MUST be valid JSON Schema objects: `{type: 'object', properties: {}, required: []}`. Invalid schemas cause OpenAI 400 errors.
+## Gotchas
+- `server.js` is deprecated; keep changes client-side only.
+- Action tag must be the final characters in the model reply (e.g., `... >`) to trigger scroll.
+- Section ids expected by scroll tags: `about-me`, `education`, `experience`, `projects`, `certifications`, `contact`.
+- ✅ Tool schemas MUST be valid JSON Schema objects: `{type: 'object', properties: {}, required: []}`. Invalid schemas cause OpenAI 400 errors.
+- ✅ Initialize RAG once in `RAGService.initialize()` on App mount
 - ✅ Always pass conversation history (last 6 messages) to maintain context
 - ✅ Wrap LLM calls in try-catch with fallback to resume-only context
 - ✅ Normalize emails in LLM responses via `ragService.normalizeEmails()`
-- ❌ NEVER expose API key in frontend code (use .env.local only)
+- ❌ NEVER expose API key in frontend code (use server-side env vars only)
+- ✅ Use `OPENAI_API_KEY` (no REACT_APP_ prefix) for backend serverless functions
+- ✅ Backend `/api` routes handle all OpenAI requests; client never calls OpenAI directly
+- ✅ Use `vercel dev` for local testing with API routes (not `npm start`)
 ### Accessibility
 - ✅ Semantic HTML (``, ``, ``)
 - ✅ ARIA labels where needed (`aria-label`, `aria-expanded`)
@@ -28792,12 +28705,13 @@ const handleScrollToProjects = createScrollHandler('projects');
 
 ## Debugging Checklist
 ### RAG Not Initializing
-- [ ] `.env.local` has `REACT_APP_OPENAI_API_KEY=sk-...`
+- [ ] `.env.local` has `OPENAI_API_KEY=sk-...` (no REACT_APP_ prefix)
+- [ ] Vercel environment variables: `OPENAI_API_KEY` set (Project Settings)
 - [ ] `/rag/meta.json` exists and valid JSON (check Network tab)
 - [ ] `/rag/vectors.f32` size = count × 1536 × 4 bytes (binary Float32)
 - [ ] `/rag/texts.txt` size matches total text_length sum in meta.json
-- [ ] Browser console shows "✅ RAG initialized successfully"
-- [ ] `ragService.getStatus()` returns `{ initialized: true, indexLoaded: true, apiKey: 'configured' }`
+- [ ] Browser console shows "✅ RAG initialized successfully (secure proxy mode)"
+- [ ] Network tab: requests to `/api/embed` and `/api/chat` return 200 (not direct `api.openai.com` calls)
 ### Action Tags Visible in Chat (Not Executing)
 - [ ] ChatHistory.js regex correctly strips: `/?>?/g`
 - [ ] LLM response has tag at **very end** (e.g., "...project. >")
@@ -28811,11 +28725,23 @@ const handleScrollToProjects = createScrollHandler('projects');
 - [ ] TopNav.js detects system preference: `window.matchMedia('(prefers-color-scheme)')`
 - [ ] Check DevTools: computed styles show correct CSS variable values
 ### Chat Not Responding
-- [ ] OpenAI API key valid (test: `openai.ChatCompletion.create({...})`)
+- [ ] OpenAI API key valid and set in `.env` (for `vercel dev`) or Vercel Dashboard
+- [ ] Using `vercel dev` (NOT `npm start`—required for `/api` routes)
 - [ ] Billing/quota not exceeded on OpenAI account
 - [ ] Browser console: check for errors in chatAPIClient.sendMessage()
+- [ ] Network tab: `/api/chat` endpoint returns 200 (check response body for error details)
+- [ ] API key is string type (check type validation in `/api/chat.js`)
 - [ ] Verify RAG initialized before sending message
-- [ ] Check Network tab: POST requests to OpenAI endpoints returning 200
+- [ ] Check Vercel function logs for backend errors
+### Tools Not Being Called or 400 Schema Errors
+- [ ] LLM model supports function calling (gpt-3.5-turbo-1106+, gpt-4+)
+- [ ] Tool schemas are valid JSON Schema: `{type: 'object', properties: {}, required: []}` (required for OpenAI)
+- [ ] Check `buildTools()` in [src/services/ragService.js#L92](src/services/ragService.js#L92)—all 6 tools must have `schema: emptySchema`
+- [ ] Tool descriptions are clear and specific
+- [ ] Check console for "🔧 LLM called X tool(s)" logs
+- [ ] Agentic loop completing iterations (max 3) without errors
+- [ ] Tool execution returns valid JSON-serializable data
+- [ ] `/api/chat` endpoint correctly converts tools: `function: { name, description, parameters: t.schema }`
 
 ## Project Structure
 ```
@@ -28832,19 +28758,24 @@ src/
 ├── pages/
 │ ├── AboutMe.js/css # Profile section with image
 │ ├── Education.js/css # Education timeline with GPA
+│ ├── SectionHeader.js # Section title component
+│ ├── SuggestionChips.js # Quick action chips for common queries
+│ └── TopNav.js # Header: theme toggle, chat toggle
+├── pages/
+│ ├── AboutMe.js/css # Profile section with image
+│ ├── Education.js/css # Education timeline with GPA
 │ ├── Experience.js/css # Work history (timeline layout)
 │ ├── Projects.js/css # Project cards grid with expand/collapse
 │ ├── Certifications.js/css # License & certification cards
 │ └── ContactMe.js/css # Contact info + social links
 └── services/
- ├── ragService.js # Core: query embedding, retrieval, LLM inference, project detection
-│ ├── Experience.js/css # Work history (timeline layout)
-│ ├── Projects.js/css # Project cards grid with expand/collapse
-│ ├── Certifications.js/css # License & certification cards
-│ └── ContactMe.js/css # Contact info + social links
-└── services/
- ├── ragService.js # Core: query embedding, retrieval, LLM inference, project detection
+ ├── ragService-secure.js # Core: backend proxy, retrieval, project detection (CURRENT)
+ ├── ragService.js # Legacy: direct OpenAI calls (deprecated for production)
  └── chatAPIClient.js # Wrapper: ensures RAG ready before queries
+
+api/
+├── embed.js # Vercel serverless: proxy OpenAI embeddings API
+└── chat.js # Vercel serverless: proxy OpenAI chat completions API
 
 public/
 ├── data/
@@ -28857,14 +28788,14 @@ public/
 ```
 
 ## Key Insights
+├── vectors.f32 # Binary Float32 embeddings (pre-computed L2-normalized, dim=1536)
+ └── texts.txt # Concatenated chunk texts (UTF-8), indexed by text_offset/text_length
+```
+
+## Key Insights
 
 1. **Client-side architecture** - No backend complexity, OpenAI API called directly from browser (fine for portfolio/demo, not production apps with sensitive API keys)
 
-2. **Binary index design** - Custom retrieval optimized for small datasets (>, <>, or no brackets).
-
-4. **CSS variable architecture** - Theme switching is O(1) via single `data-theme` attribute change. No component re-renders.
-
-5. **Factory functions** - Core React pattern used throughout (createScrollHandler, createMessageFormatter, etc.)
 2. **Binary index design** - Custom retrieval optimized for small datasets (>, <>, or no brackets).
 
 4. **CSS variable architecture** - Theme switching is O(1) via single `data-theme` attribute change. No component re-renders.
@@ -28876,25 +28807,26 @@ public/
 7. **Email normalization** - Idempotent regex in ragService handles `plain@email.com`, `[email](url)`, and existing `[email](mailto:...)` links without duplication.
 
 8. **Resume as API contract** - Single JSON file drives all portfolio sections + RAG context. Adding skills/projects only requires JSON edit + RAG index regeneration.
+6. **Project context detection** - Two-tier approach: (1) alias matching with Jaccard similarity, (2) LLM fallback for fuzzy queries. Scopes retrieval to 8 chunks when project detected vs 10 for broad search.
 
-9. **Conversation memory** - sessionStorage-based rolling summary compresses multi-turn conversations into concise bullets, reducing token bloat while preserving context continuity.
+7. **Email normalization** - Idempotent regex in ragService handles `plain@email.com`, `[email](url)`, and existing `[email](mailto:...)` links without duplication.
+
+8. **Resume as API contract** - Single JSON file drives all portfolio sections + RAG context. Adding skills/projects only requires JSON edit + RAG index regeneration.
+
+9. **Conversation memory** - sessionStorage-based rolling summary compresses multi-turn conversations into concise bullets, reducing token bloat while preserving context continuity. Summary stored in sessionStorage, updated async via fire-and-forget LLM calls.
 
 ## Documentation
 
+- `BACKEND_PROXY_SECURITY.md` - Complete migration guide for secure backend proxy architecture
 - `CLIENT_SIDE_MIGRATION.md` - Server → client-side Langchain migration notes
 - `DESIGN_TOKENS.md` - Complete CSS variable system reference (468 lines)
 - `LANGCHAIN_SETUP.md` / `LANGCHAIN_INTEGRATION.md` - Langchain config details
 - `README.md` - Standard CRA instructions (not project-specific)
 
 ---
-- `DESIGN_TOKENS.md` - Complete CSS variable system reference (468 lines)
-- `LANGCHAIN_SETUP.md` / `LANGCHAIN_INTEGRATION.md` - Langchain config details
-- `README.md` - Standard CRA instructions (not project-specific)
 
----
-
-**Last Updated:** January 28, 2026
-**Status:** Production-ready (client-side RAG + conversation memory)
+**Last Updated:** January 30, 2026
+**Status:** Production-ready (client-side RAG + conversation memory + secure backend proxy)
 # ✅ Client-Side Langchain Migration Complete
 
 ## Summary of Changes
@@ -29834,6 +29766,8 @@ For production optimization:
 
 An interactive AI-powered portfolio with a client-side RAG chatbot. Ask questions about my projects, experience, and skills—no backend required.
 
+**🌐 Live:** [gauranshsawhney.site](https://gauranshsawhney.site)
+
 ## ✨ Features
 
 - **AI Chat Assistant** powered by OpenAI GPT
@@ -29842,31 +29776,47 @@ An interactive AI-powered portfolio with a client-side RAG chatbot. Ask question
 - **Dark/Light Themes** with system preference detection
 - **Fully Responsive** - Mobile-first design
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Local Development)
+
+**Important:** Use `vercel dev` (not `npm start`) to run the backend API proxy locally.
 
 ```bash
 # Install
 npm install
 
-# Configure
-echo "REACT_APP_OPENAI_API_KEY=sk-..." > .env.local
+# Create .env file (or set via CLI)
+echo "OPENAI_API_KEY=sk-your-api-key-here" > .env
 
-# Run
-npm start
+# Run with Vercel Functions
+vercel dev
 ```
 
-Opens at http://localhost:3000
+Visit at: `http://localhost:3000`
+
+**Alternative:** Pass API key via CLI instead of `.env`:
+```bash
+OPENAI_API_KEY=sk-your-api-key-here vercel dev
+```
 
 ## 🏗️ Tech Stack
 
 - **React 19** - UI framework
-- **Langchain + OpenAI API** - RAG chatbot (text-embedding-3-large + GPT-3.5/4)
+- **Vercel Serverless Functions** - Backend proxy for OpenAI API (`/api/embed`, `/api/chat`)
+- **Langchain.js** - Tool definitions for agentic function calling
+- **OpenAI API** - LLM (text-embedding-3-large + GPT-3.5/4)
+- **Binary Vector Index** - Custom Float32 storage for fast retrieval
+- **CSS Variables** - Theme system (no CSS-in-JS)
+
+## 📂 Key Files
+- **OpenAI API** - LLM (text-embedding-3-large + GPT-3.5/4)
 - **Binary Vector Index** - Custom Float32 storage for fast retrieval
 - **CSS Variables** - Theme system (no CSS-in-JS)
 
 ## 📂 Key Files
 
-- `src/services/ragService.js` - RAG engine with binary index retrieval
+- `src/services/ragService.js` - RAG engine with binary index retrieval & agentic tool calling
+- `api/embed.js` - Backend proxy for OpenAI embeddings
+- `api/chat.js` - Backend proxy for OpenAI chat with tool calling support
 - `src/components/ChatHistory.js` - Message display + action tag parser
 - `public/data/resume.json` - Portfolio content (single source of truth)
 - `public/rag/` - Binary index assets (meta.json, vectors.f32, texts.txt)
@@ -29880,12 +29830,6 @@ Edit `public/data/resume.json` to update:
 
 Theme colors in `src/index.css`:
 ```css
-- Experience, education, projects, skills
-- Contact info and social links
-- Certifications
-
-Theme colors in `src/index.css`:
-```css
 :root[data-theme="dark"] {
  --primary: #22D3EE; /* Neon cyan */
 }
@@ -29893,29 +29837,222 @@ Theme colors in `src/index.css`:
 
 ## 📱 Deployment
 
+Currently hosted on **[gauranshsawhney.site](https://gauranshsawhney.site)**.
+
+To deploy your own version:
 ```bash
 # Build
 npm run build
 
-# Deploy ./build folder to Vercel, Netlify, or GitHub Pages
+# Set environment variable in Vercel Dashboard
+# Project Settings → Environment Variables
+# OPENAI_API_KEY: sk-your-key
+
+# Deploy to Vercel (auto-deploys from GitHub)
+vercel --prod
 ```
 
-Set `REACT_APP_OPENAI_API_KEY` in your deployment platform's environment variables.
+**Important:** API key must be set in Vercel Dashboard, not in code. `/api` routes auto-deploy.
+
+---
+
+**Author:** Gauransh Sawhney
+**Important:** API key must be set in Vercel Dashboard, not in code. `/api` routes auto-deploy.
 
 ---
 
 **Author:** Gauransh Sawhney
 **Contact:** [gauransh30@gmail.com](mailto:gauransh30@gmail.com)
+PATH: api/chat.js
+LINES: 1-12
+
+/**
+ * Vercel Serverless Function - Chat Proxy
+ * Securely handles OpenAI chat completions with tool calling support
+ */
+
+import { OpenAI } from 'openai';
+
+// CORS helper
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+PATH: api/chat.js
+LINES: 13-62
+
+};
+
+export default async function handler(req, res) {
+  // Handle preflight OPTIONS request
+  if (req.method === 'OPTIONS') {
+    return res.status(200).json({});
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const {
+      messages,
+      model = 'gpt-3.5-turbo',
+      temperature = 0.2,
+      maxTokens = 900,
+      tools = null,
+    } = req.body;
+
+    // Validate messages
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ error: 'Invalid messages: must provide non-empty array' });
+    }
+
+    // Validate API key exists (server-side only)
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey || typeof apiKey !== 'string') {
+      console.error('OPENAI_API_KEY not configured or invalid:', typeof apiKey);
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+
+    // Initialize OpenAI client with explicit string conversion
+    const openai = new OpenAI({ apiKey: String(apiKey) });
+
+    // Build chat completion params
+    const params = {
+      model,
+      messages,
+      temperature,
+      max_tokens: maxTokens,
+    };
+
+    // Add tools if provided (for function calling)
+    if (tools && Array.isArray(tools) && tools.length > 0) {
+      params.tools = tools;
+    }
+
+    // Create chat completion
+PATH: api/chat.js
+LINES: 63-95
+
+const response = await openai.chat.completions.create(params);
+
+    // Return response with tool calls if present
+    const message = response.choices[0].message;
+    return res.status(200).json({
+      content: message.content,
+      role: message.role,
+      tool_calls: message.tool_calls || null,
+      model: response.model,
+      usage: response.usage,
+    });
+
+  } catch (error) {
+    console.error('Chat API error:', error.message);
+    
+    // Handle rate limits
+    if (error.status === 429) {
+      return res.status(429).json({ error: 'Rate limit exceeded. Please try again.' });
+    }
+    
+    // Handle invalid API key
+    if (error.status === 401) {
+      return res.status(500).json({ error: 'Authentication error' });
+    }
+
+    // Handle context length errors
+    if (error.code === 'context_length_exceeded') {
+      return res.status(400).json({ error: 'Message too long. Please shorten your query.' });
+    }
+
+    return res.status(500).json({ error: 'Failed to generate response' });
+  }
+}
+PATH: api/embed.js
+LINES: 1-12
+
+/**
+ * Vercel Serverless Function - Embedding Proxy
+ * Securely handles OpenAI embedding requests without exposing API key to client
+ */
+
+import { OpenAI } from 'openai';
+
+// CORS helper
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+PATH: api/embed.js
+LINES: 13-70
+
+};
+
+export default async function handler(req, res) {
+  // Handle preflight OPTIONS request
+  if (req.method === 'OPTIONS') {
+    return res.status(200).json({});
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const { input, model = 'text-embedding-3-large' } = req.body;
+
+    if (!input || typeof input !== 'string') {
+      return res.status(400).json({ error: 'Invalid input: must provide string input' });
+    }
+
+    // Validate API key exists (server-side only, never exposed to client)
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey || typeof apiKey !== 'string') {
+      console.error('OPENAI_API_KEY not configured or invalid:', typeof apiKey);
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+
+    // Initialize OpenAI client with explicit string conversion
+    const openai = new OpenAI({ apiKey: String(apiKey) });
+
+    // Create embedding
+    const response = await openai.embeddings.create({
+      model,
+      input,
+    });
+
+    // Return embedding vector
+    return res.status(200).json({
+      embedding: response.data[0].embedding,
+      model: response.model,
+      usage: response.usage,
+    });
+
+  } catch (error) {
+    console.error('Embedding API error:', error.message);
+    
+    // Handle rate limits
+    if (error.status === 429) {
+      return res.status(429).json({ error: 'Rate limit exceeded. Please try again.' });
+    }
+    
+    // Handle invalid API key
+    if (error.status === 401) {
+      return res.status(500).json({ error: 'Authentication error' });
+    }
+
+    return res.status(500).json({ error: 'Failed to generate embedding' });
+  }
+}
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <link id="favicon" rel="icon" href="%PUBLIC_URL%/dark_logo.png" type="image/png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#000000" />
     <meta
       name="description"
-      content="Web site created using create-react-app"
+      content="Gauransh Sawhney's portfolio website"
     />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <!--
@@ -30053,7 +30190,7 @@ LINES: 46-73
 
   return { showNudge, inputRef };
 PATH: src/App.js
-LINES: 74-117
+LINES: 74-130
 
 };
 
@@ -30064,6 +30201,8 @@ const App = () => {
   const [error, setError] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(true); // Default dark
   const [resumeData, setResumeData] = useState(null);
+  const suggestionChipsRef = useRef(null);
+  const hasScrolledOnFirstChatRef = useRef(false);
 
   // Use the nudge hook
   const { showNudge, inputRef } = useInputNudge();
@@ -30092,6 +30231,12 @@ const App = () => {
     const theme = isDarkMode ? 'dark' : 'light';
     document.documentElement.dataset.theme = theme;
     localStorage.setItem('theme', theme);
+
+    // Update favicon based on theme
+    const favicon = document.getElementById('favicon');
+    if (favicon) {
+      favicon.href = isDarkMode ? '/dark_logo.png' : '/light_logo.png';
+    }
   }, [isDarkMode]);
 
   useEffect(() => {
@@ -30099,10 +30244,41 @@ const App = () => {
       .then(res => res.json())
       .then(data => setResumeData(data))
       .catch(err => console.error("Failed to load resume data:", err));
-PATH: src/App.js
-LINES: 118-163
+  }, []);
 
-}, []);
+  useEffect(() => {
+    if (messages.length === 0 || hasScrolledOnFirstChatRef.current) return;
+PATH: src/App.js
+LINES: 131-154
+
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const scrollToChips = () => {
+      const target = suggestionChipsRef.current;
+      if (!target) return;
+
+      target.scrollIntoView({
+        behavior: prefersReducedMotion ? 'auto' : 'smooth',
+        block: 'end'
+      });
+
+      const rect = target.getBoundingClientRect();
+      const bottom = rect.bottom + window.scrollY;
+      const desiredTop = bottom - window.innerHeight + 16;
+      window.scrollTo({
+        top: Math.max(desiredTop, 0),
+        behavior: prefersReducedMotion ? 'auto' : 'smooth'
+      });
+
+      hasScrolledOnFirstChatRef.current = true;
+    };
+
+    requestAnimationFrame(() => requestAnimationFrame(scrollToChips));
+    const retryId = setTimeout(scrollToChips, 250);
+    return () => clearTimeout(retryId);
+PATH: src/App.js
+LINES: 155-199
+
+}, [messages.length]);
 
   const handleSend = (text) => {
     if (!text.trim() || isLoading) return;
@@ -30146,12 +30322,12 @@ LINES: 118-163
           {/* INLINE CHAT AREA: Only renders if there are messages */}
           {messages.length > 0 && (
             <div className="inline-chat-container">
-              <ChatHistory 
-                messages={messages}
+              <ChatHistory
 PATH: src/App.js
-LINES: 164-197
+LINES: 200-236
 
-isLoading={isLoading} 
+messages={messages} 
+                isLoading={isLoading} 
                 // No onClose needed for inline
               />
             </div>
@@ -30163,7 +30339,9 @@ isLoading={isLoading}
           </div>
           
           {/* Chips */}
-          <SuggestionChips suggestions={suggestions} onChipClick={handleSend} disabled={isLoading} />
+          <div ref={suggestionChipsRef}>
+            <SuggestionChips suggestions={suggestions} onChipClick={handleSend} disabled={isLoading} />
+          </div>
           
           {error && <div className="error-message">{error}</div>}
         </div>
@@ -30746,7 +30924,7 @@ LINES: 175-218
         onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && scrollToTop()}
         title="Scroll to top"
       >
-        gs
+        GS
       </span>
       <div className="nav-links" ref={navLinksRef}>
         {navItems.map((item) => (
@@ -30868,13 +31046,13 @@ const AboutMe = ({ resumeData }) => {
         
         {/* 2. Sub-headline */}
         <h2 className="hero-subtitle">
-          {role} & AI Researcher
+          {role}
         </h2>
 
         {/* 3. The "Chat Prompt" Line */}
         <div className="ai-prompt-wrapper">
           <p className="ai-prompt-text">
-            Chat with an AI trained on my codebase, projects, and research.
+            Chat with an AI trained on my work.
             <br />
             <strong>Ask questions about my work below.</strong>
           </p>
@@ -31456,44 +31634,41 @@ export class ChatAPIClient {
 
 export default new ChatAPIClient();
 PATH: src/services/ragService.js
-LINES: 1-8
+LINES: 1-6
 
 /**
- * Client-Side RAG Service using Binary Index
- * Uses pre-computed embeddings from /rag/ assets (meta.json, vectors.f32, texts.txt)
- * LLM can call tools to access resume subsections on-demand (tools: experience, education, etc.)
+ * Client-Side RAG Service - Secure Backend Proxy Version
+ * Uses backend API endpoints to protect OpenAI API key
+ * API calls: /api/embed (embeddings), /api/chat (LLM inference)
  */
-
-import { ChatOpenAI } from '@langchain/openai';
-import { OpenAIEmbeddings } from '@langchain/openai';
 PATH: src/services/ragService.js
-LINES: 9-49
+LINES: 7-57
 
 import { tool } from '@langchain/core/tools';
 
 export class RAGChatService {
   constructor() {
-    this.embedder = null; // OpenAI embeddings for query encoding
-    this.llm = null;
-    this.llmWithTools = null; // LLM bound with tools
     this.initialized = false;
     this.resumeData = null;
     
     // Binary index assets (cached after first load)
-    this.indexMeta = null;           // Parsed meta.json
-    this.vectors = null;              // Float32Array of shape count * dim
-    this.textsBuffer = null;           // Uint8Array buffer for texts.txt
+    this.indexMeta = null;
+    this.vectors = null;
+    this.textsBuffer = null;
     this.indexLoaded = false;
     
     // Project detection
-    this.repoNames = [];             // Unique repo names from index
-    this.projectAliases = new Map(); // normalized alias -> repo name
+    this.repoNames = [];
+    this.projectAliases = new Map();
 
-    // Conversation memory (rolling summary stored in sessionStorage)
+    // Conversation memory
     this.conversationSummary = '';
 
-    // Tool definitions (lazy-initialized in initialize())
+    // Tool definitions
     this.tools = [];
+    
+    // API endpoints (configure based on environment)
+    this.apiBaseUrl = process.env.REACT_APP_API_BASE_URL || '';
   }
 
   async loadResumeData() {
@@ -31510,37 +31685,20 @@ export class RAGChatService {
   }
 
   async initialize() {
-PATH: src/services/ragService.js
-LINES: 50-101
-
-if (this.initialized) return;
+    if (this.initialized) return;
 
     try {
-      const apiKey = process.env.REACT_APP_OPENAI_API_KEY;
-      if (!apiKey) {
-        throw new Error('REACT_APP_OPENAI_API_KEY not found in environment');
-      }
+      // No API key needed on client side - handled by backend
+      console.log('🔐 Using secure backend proxy for OpenAI API');
 
-      // Initialize query embedder
-      this.embedder = new OpenAIEmbeddings({
-        apiKey,
-        model: 'text-embedding-3-large'
-      });
-
-      // Initialize LLM
-      this.llm = new ChatOpenAI({
-        apiKey,
-        model: process.env.REACT_APP_LLM_MODEL || 'gpt-3.5-turbo',
-        temperature: 0.2,
-        maxTokens: 900
-      });
-
-      // Build and bind tools to LLM
+      // Build tools that access resume data
       this.buildTools();
-      this.llmWithTools = this.llm.bindTools(this.tools);
 
       // Load resume data for system context
-      await this.loadResumeData();
+PATH: src/services/ragService.js
+LINES: 58-106
+
+await this.loadResumeData();
 
       // Load binary RAG index assets
       await this.loadBinaryIndex();
@@ -31549,11 +31707,11 @@ if (this.initialized) return;
         throw new Error('Failed to initialize binary RAG index');
       }
       
-      // Build project alias map for robust detection
+      // Build project alias map
       this.buildProjectAliases();
 
       this.initialized = true;
-      console.log('✅ RAG initialized successfully');
+      console.log('✅ RAG initialized successfully (secure proxy mode)');
     } catch (err) {
       console.error('❌ Failed to initialize RAG:', err.message);
       this.initialized = false;
@@ -31563,22 +31721,25 @@ if (this.initialized) return;
 
   // --- Tool Definitions ---
   buildTools() {
-    // Tool: Get experience
-    const getExperienceTool = tool(
-PATH: src/services/ragService.js
-LINES: 102-143
+    // Schema template for tools with no parameters
+    const emptySchema = {
+      type: 'object',
+      properties: {},
+      required: []
+    };
 
-() => {
+    const getExperienceTool = tool(
+      () => {
         const experience = this.resumeData?.experience || [];
         return JSON.stringify(experience, null, 2);
       },
       {
         name: 'get_experience',
-        description: 'Retrieve Gauransh\'s work experience, including companies, positions, years, descriptions, and technologies used.'
+        description: 'Retrieve Gauransh\'s work experience, including companies, positions, years, descriptions, and technologies used.',
+        schema: emptySchema
       }
     );
 
-    // Tool: Get education
     const getEducationTool = tool(
       () => {
         const education = this.resumeData?.education || [];
@@ -31586,11 +31747,14 @@ LINES: 102-143
       },
       {
         name: 'get_education',
-        description: 'Retrieve Gauransh\'s education history, including schools, degrees, dates, GPA, and relevant coursework.'
+PATH: src/services/ragService.js
+LINES: 107-149
+
+description: 'Retrieve Gauransh\'s education history, including schools, degrees, dates, GPA, and relevant coursework.',
+        schema: emptySchema
       }
     );
 
-    // Tool: Get certifications
     const getCertificationsTool = tool(
       () => {
         const certifications = this.resumeData?.certifications || [];
@@ -31598,11 +31762,11 @@ LINES: 102-143
       },
       {
         name: 'get_certifications',
-        description: 'Retrieve Gauransh\'s licenses and certifications, including title, organization, date issued, and credential ID.'
+        description: 'Retrieve Gauransh\'s licenses and certifications, including title, organization, date issued, and credential ID.',
+        schema: emptySchema
       }
     );
 
-    // Tool: Get projects
     const getProjectsTool = tool(
       () => {
         const projects = this.resumeData?.projects || [];
@@ -31610,14 +31774,11 @@ LINES: 102-143
       },
       {
         name: 'get_projects',
-PATH: src/services/ragService.js
-LINES: 144-190
-
-description: 'Retrieve Gauransh\'s projects, including titles, descriptions, dates, technologies, and repository links.'
+        description: 'Retrieve Gauransh\'s projects, including titles, descriptions, dates, technologies, and repository links.',
+        schema: emptySchema
       }
     );
 
-    // Tool: Get skills
     const getSkillsTool = tool(
       () => {
         const skills = this.resumeData?.skills || [];
@@ -31625,14 +31786,17 @@ description: 'Retrieve Gauransh\'s projects, including titles, descriptions, dat
       },
       {
         name: 'get_skills',
-        description: 'Retrieve Gauransh\'s technical skills organized by category (e.g., languages, frameworks, tools).'
+        description: 'Retrieve Gauransh\'s technical skills organized by category (e.g., languages, frameworks, tools).',
+        schema: emptySchema
       }
     );
 
-    // Tool: Get contact info
     const getContactInfoTool = tool(
       () => {
-        const socials = this.resumeData?.socials || [];
+PATH: src/services/ragService.js
+LINES: 150-198
+
+const socials = this.resumeData?.socials || [];
         const contact = {
           socials,
           basicInfo: this.resumeData?.basic_info || {}
@@ -31641,7 +31805,8 @@ description: 'Retrieve Gauransh\'s projects, including titles, descriptions, dat
       },
       {
         name: 'get_contact_info',
-        description: 'Retrieve Gauransh\'s contact information and social media profiles (email, LinkedIn, GitHub, etc.).'
+        description: 'Retrieve Gauransh\'s contact information and social media profiles (email, LinkedIn, GitHub, etc.).',
+        schema: emptySchema
       }
     );
 
@@ -31657,28 +31822,112 @@ description: 'Retrieve Gauransh\'s projects, including titles, descriptions, dat
     console.log('✓ Built 6 tools for resume subsections');
   }
 
+  // --- Backend API Wrappers ---
+  
+  /**
+   * Call backend /api/embed endpoint for secure embedding generation
+   */
+  async embedQuery(userMessage) {
+    try {
+      const response = await fetch(`${this.apiBaseUrl}/api/embed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          input: userMessage,
+          model: process.env.REACT_APP_EMBEDDING_MODEL || 'text-embedding-3-large'
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Embedding failed');
+      }
+
+      const data = await response.json();
+      const vec = new Float32Array(data.embedding);
+PATH: src/services/ragService.js
+LINES: 199-247
+
+return this.normalize(vec);
+    } catch (err) {
+      console.error('❌ Embedding API error:', err.message);
+      throw err;
+    }
+  }
+
+  /**
+   * Call backend /api/chat endpoint for secure LLM inference
+   * Supports tool calling via OpenAI function calling format
+   */
+  async callLLM(messages, { tools = null } = {}) {
+    try {
+      const body = {
+        messages,
+        model: process.env.REACT_APP_LLM_MODEL || 'gpt-3.5-turbo',
+        temperature: 0.2,
+        maxTokens: 900
+      };
+
+      // Convert Langchain tools to OpenAI function calling format
+      if (tools && tools.length > 0) {
+        body.tools = tools.map(t => ({
+          type: 'function',
+          function: {
+            name: t.name,
+            description: t.description,
+            parameters: t.schema || { type: 'object', properties: {}, required: [] }
+          }
+        }));
+      }
+
+      const response = await fetch(`${this.apiBaseUrl}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Chat API failed');
+      }
+
+      const data = await response.json();
+      
+      // Transform response to match Langchain format
+      return {
+        content: data.content,
+        role: data.role,
+PATH: src/services/ragService.js
+LINES: 248-285
+
+tool_calls: data.tool_calls?.map(tc => ({
+          name: tc.function.name,
+          args: JSON.parse(tc.function.arguments || '{}')
+        })) || []
+      };
+    } catch (err) {
+      console.error('❌ Chat API error:', err.message);
+      throw err;
+    }
+  }
+
   async loadBinaryIndex() {
     if (this.indexLoaded && this.indexMeta && this.vectors && this.textsBuffer) {
       console.log('✓ Binary index already cached, reusing...');
-PATH: src/services/ragService.js
-LINES: 191-223
-
-return;
+      return;
     }
 
     const loadStart = Date.now();
     try {
-      // 1. Load and parse meta.json
       const metaResponse = await fetch('/rag/meta.json');
       if (!metaResponse.ok) throw new Error('Failed to load /rag/meta.json');
       this.indexMeta = await metaResponse.json();
 
       const { count, dim, items } = this.indexMeta;
       if (!count || !dim || !items || items.length !== count) {
-        throw new Error('Invalid meta.json: missing count, dim, or items');
+        throw new Error('Invalid meta.json');
       }
 
-      // 2. Load vectors.f32 as Float32Array
       const vectorsResponse = await fetch('/rag/vectors.f32');
       if (!vectorsResponse.ok) throw new Error('Failed to load /rag/vectors.f32');
       const arrayBuffer = await vectorsResponse.arrayBuffer();
@@ -31688,42 +31937,36 @@ return;
         throw new Error(`Vector size mismatch: got ${this.vectors.length}, expected ${count * dim}`);
       }
 
-      // 3. Load texts.txt as Uint8Array
       const textsResponse = await fetch('/rag/texts.txt');
-      if (!textsResponse.ok) throw new Error('Failed to load /rag/texts.txt');
+PATH: src/services/ragService.js
+LINES: 286-331
+
+if (!textsResponse.ok) throw new Error('Failed to load /rag/texts.txt');
       this.textsBuffer = new Uint8Array(await textsResponse.arrayBuffer());
 
       this.indexLoaded = true;
       const loadTime = Date.now() - loadStart;
       console.log(`✓ Loaded binary index: ${count} items, dim=${dim}, in ${loadTime}ms`);
-PATH: src/services/ragService.js
-LINES: 224-265
-
-} catch (err) {
+    } catch (err) {
       console.error('Failed to load binary index:', err.message);
       this.indexLoaded = false;
       throw err;
     }
   }
 
-  // --- Project Detection Helpers ---
-
   normalizeText(text) {
-    // Normalize text for fuzzy matching
     return text
       .toLowerCase()
-      .replace(/[_-]/g, ' ')           // Replace _ and - with spaces
-      .replace(/[^a-z0-9\s]/g, '')     // Remove punctuation
-      .replace(/\s+/g, ' ')            // Collapse whitespace
+      .replace(/[_-]/g, ' ')
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, ' ')
       .trim();
   }
 
   buildProjectAliases() {
-    // Build alias map from index repos and resume projects
     this.repoNames = [];
     this.projectAliases = new Map();
 
-    // 1. Extract unique repos from index
     const repoSet = new Set();
     if (this.indexMeta?.items) {
       this.indexMeta.items.forEach(item => {
@@ -31733,30 +31976,35 @@ LINES: 224-265
     }
     this.repoNames = Array.from(repoSet);
 
-    // 2. Add repo names as aliases (normalized)
     this.repoNames.forEach(repo => {
       const normalized = this.normalizeText(repo);
       this.projectAliases.set(normalized, repo);
       
-      // Add version without trailing year (e.g., "bosm roulette 2019" -> "bosm roulette")
       const withoutYear = normalized.replace(/\s+(19|20)\d{2}\s*$/, '').trim();
       if (withoutYear !== normalized) {
-PATH: src/services/ragService.js
-LINES: 266-294
-
-this.projectAliases.set(withoutYear, repo);
+        this.projectAliases.set(withoutYear, repo);
       }
     });
 
-    // 3. Add resume project titles mapped to repo_name
     if (this.resumeData?.projects) {
-      this.resumeData.projects.forEach(proj => {
+PATH: src/services/ragService.js
+LINES: 332-362
+
+this.resumeData.projects.forEach(proj => {
         if (proj.title && proj.repo_name) {
           const normalized = this.normalizeText(proj.title);
           this.projectAliases.set(normalized, proj.repo_name);
         }
       });
     }
+
+    const portfolioAliases = [
+      'this website', 'this project', 'this portfolio',
+      'portfolio chat', 'ai portfolio', 'rag portfolio', 'portfolio assistant'
+    ];
+    portfolioAliases.forEach(alias => {
+      this.projectAliases.set(alias, 'portfolio-chat');
+    });
 
     console.log('✓ Built project aliases:', this.projectAliases.size, 'aliases for', this.repoNames.length, 'repos');
   }
@@ -31765,22 +32013,21 @@ this.projectAliases.set(withoutYear, repo);
     const projectList = this.resumeData?.projects
       ? JSON.stringify(this.resumeData.projects.map(p => ({ project: p.title, repo: p.repo_name })))
       : '[]';
-    // LLM fallback: ask LLM which project user is referring to
-    if (!this.llm || this.repoNames.length === 0) return null;
+    
+    if (this.repoNames.length === 0) return null;
 
     try {
-      const prompt = `User query: "${userMessage}"\n\nProject-to-repo mapping: ${projectList}\n\nWhich repo does the user's query refer to? \nRespond with ONLY the exact repo name from the "Available repos" list above, or "NONE" if no repo is mentioned.\nDo not add explanation.`;
+      const prompt = `User query: "${userMessage}"\n\nProject-to-repo mapping: ${projectList}\n\nWhich repo does the user's query refer to? \nRespond with ONLY the exact repo name from the list above, or "NONE" if no repo is mentioned.\nDo not add explanation.`;
 
-      const result = await this.llm.invoke([
+      const result = await this.callLLM([
         { role: 'user', content: prompt }
 PATH: src/services/ragService.js
-LINES: 295-341
+LINES: 363-414
 
 ]);
 
       const response = (result.content || '').trim();
       
-      // Check if response is a valid repo name
       if (response !== 'NONE' && this.repoNames.includes(response)) {
         console.log(`📦 Detected project via LLM: "${response}"`);
         return response;
@@ -31794,9 +32041,7 @@ LINES: 295-341
     }
   }
 
-  // --- Binary Index Retrieval ---
   normalize(vec) {
-    // Normalize vector to unit length (L2 norm)
     let norm = 0;
     for (let i = 0; i < vec.length; i++) {
       norm += vec[i] * vec[i];
@@ -31811,7 +32056,6 @@ LINES: 295-341
   }
 
   dotProduct(a, b) {
-    // Compute dot product of two vectors (a.k.a. cosine similarity for L2-normalized vectors)
     let sum = 0;
     for (let i = 0; i < a.length; i++) {
       sum += a[i] * b[i];
@@ -31819,18 +32063,7 @@ LINES: 295-341
     return sum;
   }
 
-  async embedQuery(userMessage) {
-    // Embed user message using OpenAI embeddings and normalize
-    const embedding = await this.embedder.embedQuery(userMessage);
-    const vec = new Float32Array(embedding);
-PATH: src/services/ragService.js
-LINES: 342-382
-
-return this.normalize(vec);
-  }
-
   getChunkText(itemIndex) {
-    // Retrieve and decode text for a specific chunk from texts.txt
     const item = this.indexMeta.items[itemIndex];
     if (!item) return '';
     
@@ -31840,22 +32073,18 @@ return this.normalize(vec);
   }
 
   retrieveTopK(queryVector, { repoFilter = null, k = 10 } = {}) {
-    // Compute dot product similarity for all vectors and return top-k
     const { count, dim, items } = this.indexMeta;
     const similarities = [];
-    let filteredCount = 0;
+PATH: src/services/ragService.js
+LINES: 415-460
 
-    for (let i = 0; i < count; i++) {
-      // Determine repo name from items[i]
+for (let i = 0; i < count; i++) {
       const itemRepo = items[i].repo || items[i].project_name;
 
-      // Skip if repo filter is active and doesn't match
       if (repoFilter && itemRepo !== repoFilter) {
         continue;
       }
-      filteredCount++;
 
-      // Compute dot product directly using offset (avoid slice)
       const vectorStart = i * dim;
       let sim = 0;
       for (let j = 0; j < dim; j++) {
@@ -31865,32 +32094,15 @@ return this.normalize(vec);
       similarities.push({ index: i, similarity: sim });
     }
 
-    // Debug log for scoped retrieval
-    if (repoFilter && similarities.length === 0) {
-PATH: src/services/ragService.js
-LINES: 383-419
-
-console.warn(`⚠️ Scoped retrieval returned 0 results for repo: "${repoFilter}"`);
-      console.warn(`  First item keys: ${Object.keys(items[0]).join(', ')}`);
-      console.warn(`  Filtered item count: ${filteredCount}`);
-      if (items[0]) {
-        console.warn(`  Sample item repo value: "${items[0].repo}" | project_name: "${items[0].project_name}"`);
-      }
-    }
-
-    // Sort by similarity (descending) and keep top-k
     similarities.sort((a, b) => b.similarity - a.similarity);
     return similarities.slice(0, k);
   }
 
   formatChunks(chunkIndices) {
-    // Format retrieved chunks with citations (chunk_id is already unique)
     const formatted = [];
 
     for (const idx of chunkIndices) {
       const item = this.indexMeta.items[idx];
-
-      // Build citation header
       const projectName = item.repo || item.project_name || 'Unknown';
       const filePath = item.file_path || 'N/A';
       const startLine = item.start_line;
@@ -31902,30 +32114,20 @@ console.warn(`⚠️ Scoped retrieval returned 0 results for repo: "${repoFilter
       }
       sourceHeader += ']';
 
-      // Get chunk text and truncate
       const chunkText = this.getChunkText(idx);
       const maxLength = 1200;
       const truncated = chunkText.length > maxLength
         ? chunkText.substring(0, maxLength) + '...'
-PATH: src/services/ragService.js
-LINES: 420-449
-
-: chunkText;
+        : chunkText;
 
       formatted.push(`${sourceHeader}\n${truncated}`);
-
     }
     
-    // Log formatting results
     console.log('🧹 Formatted context chunks:', formatted.length);
-    
-    // Log chunk previews (safe - first 120 chars only)
-    formatted.forEach((chunk, i) => {
-      const preview = chunk.split('\n')[1]?.slice(0, 120) || chunk.slice(0, 120);
-      console.log(`📄 Context chunk ${i + 1} preview:`, preview + '...');
-    });
+PATH: src/services/ragService.js
+LINES: 461-481
 
-    return formatted.join('\n\n---\n\n');
+return formatted.join('\n\n---\n\n');
   }
 
   buildSystemPrompt(retrievedContext) {
@@ -31936,15 +32138,20 @@ LINES: 420-449
     return `You are the official AI Portfolio Assistant for **Gauransh Sawhney**, a Full-stack / AI / ML software engineer and graduate student.
       Your role is to represent Gauransh professionally, accurately, and conservatively.
 
+      ## 🎯 Context Recognition
+      **This Website / This Project refers to:** "portfolio-chat" (the AI-powered portfolio RAG system you're running in)
+      When users ask about "this website", "this project", "portfolio chat", or the portfolio assistant itself, they're asking about the portfolio-chat project.
+      Use the get_projects tool to reference its details if needed.
+
       ## 🔒 Core Rules
       1. **Ground everything:** Only cite information explicitly available via tools, retrieved context, or your training knowledge about public projects.
       2. **Be honest:** If you don't have a detail, say "I don't have that specific information."
       3. **Cite sources:** When referencing code or technical details, mention the project name and source.
+      4. **Stay professional:** Confident and enthusiastic, but never exaggerated.
 PATH: src/services/ragService.js
-LINES: 450-478
+LINES: 482-510
 
-4. **Stay professional:** Confident and enthusiastic, but never exaggerated.
-      5. **Be concise:** Keep responses to 3–4 sentences unless asked for more.
+5. **Be concise:** Keep responses to 3–4 sentences unless asked for more.
       6. **No speculation:** Don't infer or assume beyond what's explicitly available.
 
       ## 🛠️ Available Tools
@@ -31970,12 +32177,13 @@ LINES: 450-478
           → <<ACTION:SCROLL_EXPERIENCE>>
 
           **Projects keywords:** "Projects", "GitHub", "Code", or ${projectList}  
-          → <<ACTION:SCROLL_PROJECTS>>
-PATH: src/services/ragService.js
-LINES: 479-516
+          → <<ACTION:SCROLL_PROJECTS>>  
 
-**Certifications keywords:** "Licenses", "Certifications", "Credentials", "Certificate"  
-          → <<ACTION:SCROLL_CERTIFICATIONS>>
+          **Certifications keywords:** "Licenses", "Certifications", "Credentials", "Certificate"
+PATH: src/services/ragService.js
+LINES: 511-548
+
+→ <<ACTION:SCROLL_CERTIFICATIONS>>
 
           **Contact keywords:** "Contact", "Email", "LinkedIn"  
           →    <<ACTION:SCROLL_CONTACT>>
@@ -31998,9 +32206,7 @@ LINES: 479-516
     let bestScore = 0;
     let matchReason = '';
 
-    // Check each alias for matches
     for (const [alias, repoName] of this.projectAliases.entries()) {
-      // Exact inclusion match (highest priority)
       if (normalizedMsg.includes(alias)) {
         if (!bestMatch || alias.length > matchReason.length) {
           bestMatch = repoName;
@@ -32010,17 +32216,14 @@ LINES: 479-516
         continue;
       }
 
-      // Token overlap (Jaccard similarity)
       const aliasTokens = new Set(alias.split(' ').filter(t => t.length > 0));
-PATH: src/services/ragService.js
-LINES: 517-557
-
-const intersection = new Set([...msgTokens].filter(t => aliasTokens.has(t)));
+      const intersection = new Set([...msgTokens].filter(t => aliasTokens.has(t)));
       const union = new Set([...msgTokens, ...aliasTokens]);
       const jaccard = intersection.size / union.size;
+PATH: src/services/ragService.js
+LINES: 549-594
 
-      // Require minimum overlap of 0.5
-      if (jaccard >= 0.5 && jaccard > bestScore) {
+if (jaccard >= 0.5 && jaccard > bestScore) {
         bestMatch = repoName;
         bestScore = jaccard;
         matchReason = `token overlap (${jaccard.toFixed(2)}): "${alias}"`;
@@ -32032,13 +32235,10 @@ const intersection = new Set([...msgTokens].filter(t => aliasTokens.has(t)));
       return bestMatch;
     }
     
-    // If no alias match, mark for async LLM fallback (will be called in query())
     return null;
   }
 
-  // --- Agentic Tool Loop ---
   async executeToolCall(toolName, toolInput) {
-    // Execute a tool call and return the result
     const tool = this.tools.find(t => t.name === toolName);
     if (!tool) {
       console.warn(`⚠️ Tool not found: ${toolName}`);
@@ -32055,34 +32255,28 @@ const intersection = new Set([...msgTokens].filter(t => aliasTokens.has(t)));
   }
 
   async agenticLoop(systemPrompt, messages, maxIterations = 3) {
-    // Run agentic loop: LLM → check for tool calls → execute → add results → repeat
-PATH: src/services/ragService.js
-LINES: 558-598
-
-let currentMessages = [...messages];
+    let currentMessages = [...messages];
     let iteration = 0;
 
     while (iteration < maxIterations) {
       iteration++;
       console.log(`🔄 Agentic loop iteration ${iteration}/${maxIterations}`);
 
-      // Call LLM with tools bound
-      const response = await this.llmWithTools.invoke([
-        { role: 'system', content: systemPrompt },
-        ...currentMessages
-      ]);
+      const response = await this.callLLM(
+        [{ role: 'system', content: systemPrompt }, ...currentMessages],
+        { tools: this.tools }
+      );
 
-      // Check if response has tool calls
       if (response.tool_calls && response.tool_calls.length > 0) {
         console.log(`🔧 LLM called ${response.tool_calls.length} tool(s)`);
+PATH: src/services/ragService.js
+LINES: 595-641
 
-        // Add LLM response to message history
-        currentMessages.push({
+currentMessages.push({
           role: 'assistant',
           content: response.content || ''
         });
 
-        // Execute each tool call sequentially
         for (const toolCall of response.tool_calls) {
           const toolName = toolCall.name;
           const toolInput = toolCall.args || {};
@@ -32090,20 +32284,13 @@ let currentMessages = [...messages];
           console.log(`  → Executing: ${toolName}`);
           const toolResult = await this.executeToolCall(toolName, toolInput);
 
-          // Add tool result to message history
           currentMessages.push({
             role: 'user',
             content: `[Tool Result from ${toolName}]:\n${toolResult}`
           });
         }
-
-        // Continue loop to get final response from LLM
       } else {
-        // No tool calls, return final response
-PATH: src/services/ragService.js
-LINES: 599-637
-
-console.log(`✓ Agentic loop complete (no more tool calls)`);
+        console.log(`✓ Agentic loop complete (no more tool calls)`);
         return {
           text: response.content || '',
           iterations: iteration
@@ -32111,7 +32298,6 @@ console.log(`✓ Agentic loop complete (no more tool calls)`);
       }
     }
 
-    // Max iterations reached, return current response
     console.warn(`⚠️ Max iterations (${maxIterations}) reached`);
     const lastResponse = currentMessages[currentMessages.length - 1];
     return {
@@ -32121,50 +32307,35 @@ console.log(`✓ Agentic loop complete (no more tool calls)`);
   }
 
   async query(userMessage, history = []) {
-    if (!this.embedder || !this.llmWithTools || !this.initialized || !this.indexLoaded) {
-      console.warn('⚠️ RAG not ready; using resume-only context');
+    if (!this.initialized || !this.indexLoaded) {
+      console.warn('⚠️ RAG not ready; using fallback');
       return this.queryFallback(userMessage, history);
     }
 
     try {
       const queryStart = Date.now();
       
-      // A) Log user query and project detection
       console.log('🧠 User query:', userMessage);
       let targetRepo = this.detectProjectContext(userMessage);
-      
-      // If no alias match found, try LLM fallback
-      if (!targetRepo) {
+PATH: src/services/ragService.js
+LINES: 642-678
+
+if (!targetRepo) {
         console.log('🧠 No alias match; trying LLM fallback...');
         targetRepo = await this.detectProjectContextViaLLM(userMessage);
       }
       
       console.log('📦 Detected project:', targetRepo || 'none');
-      
-      // B) Log retrieval mode
-PATH: src/services/ragService.js
-LINES: 638-670
+      console.log('🔍 Retrieval mode:', targetRepo ? `scoped (repo: ${targetRepo})` : 'broad');
 
-console.log('🔍 Retrieval mode:', targetRepo ? `scoped (repo: ${targetRepo})` : 'broad');
-
-      // Embed query and retrieve top-k (RAG context for code/implementation details)
       const queryVector = await this.embedQuery(userMessage);
       const topKResults = this.retrieveTopK(queryVector, {
         repoFilter: targetRepo,
         k: 10
       });
       
-      // C) Log raw retrieval results
       console.log('📊 Raw retrieval hits:', topKResults.length);
-      if (topKResults.length > 0) {
-        console.log('📊 Top 3 hits:', topKResults.slice(0, 3).map(h => ({
-          similarity: h.similarity.toFixed(4),
-          repo: this.indexMeta.items[h.index].repo || this.indexMeta.items[h.index].project_name,
-          path: this.indexMeta.items[h.index].file_path
-        })));
-      }
 
-      // Format RAG context (only if retrieval hits found)
       let formattedContext = '';
       let sourceDocuments = [];
       if (topKResults.length > 0) {
@@ -32176,32 +32347,27 @@ console.log('🔍 Retrieval mode:', targetRepo ? `scoped (repo: ${targetRepo})` 
         }));
       }
 
-      // Build lightweight system prompt with RAG context (if any)
       const systemPrompt = this.buildSystemPrompt(formattedContext);
-PATH: src/services/ragService.js
-LINES: 671-707
+      const recentHistory = history.slice(-6);
 
-const recentHistory = history.slice(-6);
-
-      // Add conversation summary if available
       const summary = this.getConversationSummary();
       if (summary) {
         recentHistory.unshift({ role: 'system', content: `Conversation Summary:\n${summary}` });
       }
 
-      // Run agentic loop: tools will be available for LLM to call on-demand
       const agenticResult = await this.agenticLoop(systemPrompt, [
         ...recentHistory,
-        { role: 'user', content: userMessage }
+PATH: src/services/ragService.js
+LINES: 679-714
+
+{ role: 'user', content: userMessage }
       ]);
 
       const queryTime = Date.now() - queryStart;
-      const topSimilarity = topKResults[0]?.similarity?.toFixed(3) || 'N/A';
-      console.log(`✓ Query completed in ${queryTime}ms, retrieved ${topKResults.length} chunks (top similarity: ${topSimilarity}), agentic iterations: ${agenticResult.iterations}`);
+      console.log(`✓ Query completed in ${queryTime}ms, retrieved ${topKResults.length} chunks, agentic iterations: ${agenticResult.iterations}`);
 
       const responseText = this.normalizeEmails(agenticResult.text);
 
-      // Update conversation summary asynchronously
       this.updateConversationSummaryAsync([
         ...recentHistory.filter(m => m.role !== 'system'),
         { role: 'user', content: userMessage },
@@ -32217,15 +32383,10 @@ const recentHistory = history.slice(-6);
       return this.queryFallback(userMessage, history);
     }
   }
-PATH: src/services/ragService.js
-LINES: 708-742
 
-async queryFallback(userMessage, history = []) {
+  async queryFallback(userMessage, history = []) {
     console.log('📋 Using fallback mode (tools available, no RAG context)');
     try {
-      if (!this.llmWithTools) throw new Error('LLM not initialized');
-
-      // Lightweight fallback prompt with just identity + tools available
       const fallbackSystemPrompt = `You are Gauransh Sawhney's portfolio assistant. 
         Answer questions about Gauransh's experience, education, projects, and skills.
         Use the available tools to access resume details on demand.
@@ -32233,10 +32394,12 @@ async queryFallback(userMessage, history = []) {
 
       const recentHistory = history.slice(-4);
 
-      // Run agentic loop with fallback prompt
       const agenticResult = await this.agenticLoop(fallbackSystemPrompt, [
         ...recentHistory,
-        { role: 'user', content: userMessage }
+PATH: src/services/ragService.js
+LINES: 715-754
+
+{ role: 'user', content: userMessage }
       ]);
 
       return { 
@@ -32252,15 +32415,7 @@ async queryFallback(userMessage, history = []) {
     }
   }
 
-  // --- Email Normalization Helper ---
   normalizeEmails(text) {
-    // Convert emails to markdown mailto links (idempotent - safe to call multiple times)
-PATH: src/services/ragService.js
-LINES: 743-773
-
-// Preserves code blocks (```) and existing mailto links
-    // Does nothing if mailto: already appears in the same email string
-    
     const parts = text.split(/(```[\s\S]*?```)/);
     
     return parts.map((part, index) => {
@@ -32268,7 +32423,6 @@ LINES: 743-773
       
       let result = part;
       
-      // Pre-scan for existing mailto links to avoid duplicate conversions
       const existingMailtoEmails = new Set();
       const mailtoRegex = /\(mailto:([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\)/g;
       let mailtoMatch;
@@ -32276,32 +32430,20 @@ LINES: 743-773
         existingMailtoEmails.add(mailtoMatch[1]);
       }
       
-      // 1. Convert [email] -> [email](mailto:email) only if not already followed by (mailto:...)
       result = result.replace(/\[([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\](?!\(mailto:)/g, (match, email) => {
-        // Skip if already converted to mailto
-        if (existingMailtoEmails.has(email)) {
-          return match;
-        }
+        if (existingMailtoEmails.has(email)) return match;
         return `[${email}](mailto:${email})`;
       });
       
-      // 2. Convert plain emails -> [email](mailto:email)
-      // Skip if email is already in a mailto link or surrounded by markdown syntax
       result = result.replace(/\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g, (match, email) => {
-        // Skip if already converted to mailto
-PATH: src/services/ragService.js
-LINES: 774-816
-
-if (existingMailtoEmails.has(email)) {
-          return match;
-        }
+        if (existingMailtoEmails.has(email)) return match;
         
-        // Check if email is preceded by (mailto: or ]( (already in a link)
         const idx = result.indexOf(match);
-        const before = result.substring(Math.max(0, idx - 8), idx);
-        if (before.includes('mailto:') || before.endsWith('](')) {
-          return match;
-        }
+PATH: src/services/ragService.js
+LINES: 755-796
+
+const before = result.substring(Math.max(0, idx - 8), idx);
+        if (before.includes('mailto:') || before.endsWith('](')) return match;
         
         return `[${email}](mailto:${email})`;
       });
@@ -32310,7 +32452,6 @@ if (existingMailtoEmails.has(email)) {
     }).join('');
   }
 
-  // --- Conversation Memory (Rolling Summary) ---
   getConversationSummary() {
     try {
       if (!this.conversationSummary) {
@@ -32327,18 +32468,13 @@ if (existingMailtoEmails.has(email)) {
     this.conversationSummary = summary || '';
     try {
       sessionStorage.setItem('conversationSummary', this.conversationSummary);
-    } catch (_) {
-      // ignore storage errors
-    }
+    } catch (_) {}
   }
 
   buildSummaryPrompt(existingSummary, messages) {
     const header = `You are maintaining a concise conversation summary for a portfolio assistant.\n` +
       `Update the summary to capture enduring context, user goals, constraints, and decisions.\n` +
-PATH: src/services/ragService.js
-LINES: 817-834
-
-`Keep it under 200 tokens. Exclude chit-chat. Prefer bullet points.\n`;
+      `Keep it under 200 tokens. Exclude chit-chat. Prefer bullet points.\n`;
 
     const summaryBlock = existingSummary
       ? `Current summary:\n${existingSummary}\n\n`
@@ -32347,29 +32483,29 @@ LINES: 817-834
     const historyText = messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
     return `${header}${summaryBlock}Recent turns:\n${historyText}\n\nNew summary:`;
   }
+PATH: src/services/ragService.js
+LINES: 797-804
 
-  updateConversationSummaryAsync(messages) {
+updateConversationSummaryAsync(messages) {
     try {
       const existing = this.getConversationSummary();
       const prompt = this.buildSummaryPrompt(existing, messages);
-      // Fire-and-forget to avoid blocking the main query
-      this.llm.invoke([
+      
+      this.callLLM([
         { role: 'system', content: 'You are a summarizer that outputs ONLY the updated summary.' },
         { role: 'user', content: prompt }
 PATH: src/services/ragService.js
-LINES: 835-858
+LINES: 805-826
 
 ]).then(res => {
         const updated = (res?.content || '').trim();
         if (updated) this.setConversationSummary(updated);
-      }).catch(() => { /* ignore */ });
-    } catch (_) {
-      // ignore summarization errors
-    }
+      }).catch(() => {});
+    } catch (_) {}
   }
 
   isReady() {
-    return this.initialized && this.embedder !== null && this.llm !== null && this.indexLoaded;
+    return this.initialized && this.indexLoaded;
   }
 
   getStatus() {
@@ -32377,7 +32513,7 @@ LINES: 835-858
       initialized: this.initialized,
       ready: this.isReady(),
       indexLoaded: this.indexLoaded,
-      apiKey: process.env.REACT_APP_OPENAI_API_KEY ? 'configured' : 'missing'
+      proxyMode: true
     };
   }
 }
