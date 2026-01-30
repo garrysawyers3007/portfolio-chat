@@ -1,11 +1,11 @@
 # Portfolio Chat – Copilot Instructions
 
 ## Big picture
-- **Client-side React 19 portfolio** with RAG chatbot; **secure backend proxy** protects OpenAI API key. Chat flow: [src/services/chatAPIClient.js](src/services/chatAPIClient.js) → [src/services/ragService-secure.js](src/services/ragService-secure.js) → [api/embed.js](api/embed.js) + [api/chat.js](api/chat.js) → UI in [src/components/ChatHistory.js](src/components/ChatHistory.js).
-- **Agentic architecture**: LLM can call 6 resume tools on-demand (`get_experience`, `get_education`, `get_projects`, `get_skills`, `get_certifications`, `get_contact_info`) via OpenAI function calling with proper JSON Schema validation. Tools in [src/services/ragService.js#L92](src/services/ragService.js#L92) with `emptySchema` ({type: 'object', properties: {}, required: []}). Agentic loop runs max 3 iterations: LLM → detect tool calls → execute tools → inject results → LLM final response.
+- **Client-side React 19 portfolio** with RAG chatbot; **secure backend proxy** protects OpenAI API key. Chat flow: [src/services/chatAPIClient.js](src/services/chatAPIClient.js) → [src/services/ragService.js](src/services/ragService.js) → [api/embed.js](api/embed.js) + [api/chat.js](api/chat.js) → UI in [src/components/ChatHistory.js](src/components/ChatHistory.js).
+- **Agentic architecture**: LLM can call 6 resume tools on-demand (`get_experience`, `get_education`, `get_projects`, `get_skills`, `get_certifications`, `get_contact_info`) via OpenAI function calling with proper JSON Schema validation. Tools in [src/services/ragService.js#L76](src/services/ragService.js#L76) with `emptySchema` ({type: 'object', properties: {}, required: []}). Agentic loop runs max 3 iterations: LLM → detect tool calls → execute tools → inject results → LLM final response.
 - **Binary vector index**: Pre-computed embeddings stored in [public/rag/](public/rag/) (meta.json for metadata, vectors.f32 for Float32 embeddings, texts.txt for chunk content). Resume content is single source of truth in [public/data/resume.json](public/data/resume.json).
-- **Action tags**: Responses ending with `<<ACTION:SCROLL_*>>` trigger auto-scroll to page sections. Parsed/stripped by ChatHistory regex; target sections have IDs in [src/pages/](src/pages/) components.
-- **Security model**: Vercel Serverless Functions (`/api/embed`, `/api/chat`) proxy OpenAI requests. API key stored as `OPENAI_API_KEY` (no `REACT_APP_` prefix) in Vercel environment variables only.
+- **Action tags**: Responses ending with `<<ACTION:SCROLL_*>>` trigger auto-scroll to page sections. Parsed/stripped by [src/components/ChatHistory.js](src/components/ChatHistory.js) regex; target sections have IDs in [src/pages/](src/pages/) components.
+- **Security model**: Vercel Serverless Functions (`/api/embed`, `/api/chat`) proxy OpenAI requests. API key stored as `OPENAI_API_KEY` (no `REACT_APP_` prefix) in Vercel environment variables only. Client never sees API key.
 
 ## Project-specific patterns
 - **Backend proxy architecture**: Client calls `/api/embed` and `/api/chat` Vercel serverless functions instead of OpenAI directly. API key secured server-side as `OPENAI_API_KEY` (no `REACT_APP_` prefix).
@@ -101,7 +101,7 @@ src/
 │   ├── InputArea.js       # Text input + debounced send
 │   ├── SectionHeader.js   # Section title component
 │   ├── SuggestionChips.js # Quick action chips for common queries
-│   └── TopNav.js          # Header: theme toggle, chat toggle
+│   └── TopNav.js          # Header: theme toggle
 ├── pages/
 │   ├── AboutMe.js/css          # Profile section with image
 │   ├── Education.js/css        # Education timeline with GPA
@@ -110,8 +110,7 @@ src/
 │   ├── Certifications.js/css   # License & certification cards
 │   └── ContactMe.js/css        # Contact info + social links
 └── services/
-    ├── ragService-secure.js # Core: backend proxy, retrieval, project detection (CURRENT)
-    ├── ragService.js      # Legacy: direct OpenAI calls (deprecated for production)
+    ├── ragService.js      # Core: RAG retrieval, tool definitions, binary index loading, LLM calls via secure proxy
     └── chatAPIClient.js   # Wrapper: ensures RAG ready before queries
 
 api/
@@ -121,7 +120,7 @@ api/
 public/
 ├── data/
 │   ├── resume.json        # Single source of truth: experience, education, projects, skills, socials
-│   └── site_data.json     # (Legacy, may be deprecated)
+│   └── site_data.json     # Legacy, may be deprecated
 └── rag/
     ├── meta.json          # Index metadata: count, dim, items[] (file_path, repo, chunk_id, text offsets)
     ├── vectors.f32        # Binary Float32 embeddings (pre-computed L2-normalized, dim=1536)

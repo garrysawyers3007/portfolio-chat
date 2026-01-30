@@ -88,7 +88,7 @@ const App = () => {
 
   const suggestions = [
     { label: "Is Gauransh a good fit for my role?", icon: "💼" },
-    { label: "Summarize Gauransh's resume", icon: "📄" },
+    { label: "How does this website work?", icon: "💻" },
     { label: "How can I contact Gauransh?", icon: "📬" }
   ];
 
