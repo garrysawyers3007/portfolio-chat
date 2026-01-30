@@ -18,14 +18,11 @@ An interactive AI-powered portfolio with a client-side RAG chatbot. Ask question
 # Install
 npm install
 
-# Configure
-echo "REACT_APP_OPENAI_API_KEY=sk-..." > .env.local
-
 # Run
 npm start
 ```
 
-Opens at http://localhost:3000 | Visit live site: [gauranshsawhney.site](https://gauranshsawhney.site)
+Visit live site: [gauranshsawhney.site](https://gauranshsawhney.site)
 
 ## 🏗️ Tech Stack
 
@@ -66,8 +63,6 @@ npm run build
 
 # Deploy ./build folder to Vercel, Netlify, or GitHub Pages
 ```
-
-Set `REACT_APP_OPENAI_API_KEY` in your deployment platform's environment variables.
 
 ---
 
