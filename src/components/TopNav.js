@@ -197,7 +197,7 @@ const TopNav = ({ isDarkMode, onToggleTheme }) => {
         onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && scrollToTop()}
         title="Scroll to top"
       >
-        gs
+        GS
       </span>
       <div className="nav-links" ref={navLinksRef}>
         {navItems.map((item) => (

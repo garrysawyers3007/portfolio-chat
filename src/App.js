@@ -110,6 +110,12 @@ const App = () => {
     const theme = isDarkMode ? 'dark' : 'light';
     document.documentElement.dataset.theme = theme;
     localStorage.setItem('theme', theme);
+
+    // Update favicon based on theme
+    const favicon = document.getElementById('favicon');
+    if (favicon) {
+      favicon.href = isDarkMode ? '/dark_logo.png' : '/light_logo.png';
+    }
   }, [isDarkMode]);
 
   useEffect(() => {
