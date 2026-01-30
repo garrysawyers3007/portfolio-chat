@@ -50,9 +50,9 @@ export class RAGChatService {
     if (this.initialized) return;
 
     try {
-      const apiKey = process.env.OPENAPI;
+      const apiKey = process.env.REACT_APP_OPENAI_API_KEY;
       if (!apiKey) {
-        throw new Error('OPENAPI not found in environment');
+        throw new Error('REACT_APP_OPENAI_API_KEY not found in environment');
       }
 
       // Initialize query embedder
@@ -579,7 +579,7 @@ export class RAGChatService {
 
     while (iteration < maxIterations) {
       iteration++;
-      console.log(`🔄 Agentic loop iteration ${iteration}/${maxIterations}`);
+      console.log(`� Agentic loop iteration ${iteration}/${maxIterations}`);
 
       // Call LLM with tools bound
       const response = await this.llmWithTools.invoke([
@@ -869,7 +869,7 @@ export class RAGChatService {
       initialized: this.initialized,
       ready: this.isReady(),
       indexLoaded: this.indexLoaded,
-      apiKey: process.env.OPENAPI ? 'configured' : 'missing'
+      apiKey: process.env.REACT_APP_OPENAI_API_KEY ? 'configured' : 'missing'
     };
   }
 }
