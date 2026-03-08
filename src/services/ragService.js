@@ -233,14 +233,8 @@ export class RAGChatService {
       });
 
       if (!response.ok) {
-        let errorMessage = 'Retrieval failed';
-        try {
-          const error = await response.json();
-          errorMessage = error.error || errorMessage;
-        } catch {
-          errorMessage = `Retrieval failed (HTTP ${response.status})`;
-        }
-        throw new Error(errorMessage);
+        const error = await response.json();
+        throw new Error(error.error || 'Retrieval failed');
       }
 
       return response.json(); // { matches, count, model, query }
