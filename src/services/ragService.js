@@ -11,12 +11,6 @@ export class RAGChatService {
     this.initialized = false;
     this.resumeData = null;
     
-    // Binary index assets (cached after first load)
-    this.indexMeta = null;
-    this.vectors = null;
-    this.textsBuffer = null;
-    this.indexLoaded = false;
-    
     // Project detection
     this.repoNames = [];
     this.projectAliases = new Map();
@@ -56,13 +50,6 @@ export class RAGChatService {
 
       // Load resume data for system context
       await this.loadResumeData();
-
-      // Load binary RAG index assets
-      await this.loadBinaryIndex();
-
-      if (!this.indexLoaded || !this.indexMeta) {
-        throw new Error('Failed to initialize binary RAG index');
-      }
       
       // Build project alias map
       this.buildProjectAliases();
@@ -174,34 +161,6 @@ export class RAGChatService {
   }
 
   // --- Backend API Wrappers ---
-  
-  /**
-   * Call backend /api/embed endpoint for secure embedding generation
-   */
-  async embedQuery(userMessage) {
-    try {
-      const response = await fetch(`${this.apiBaseUrl}/api/embed`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          input: userMessage,
-          model: process.env.REACT_APP_EMBEDDING_MODEL || 'text-embedding-3-large'
-        })
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Embedding failed');
-      }
-
-      const data = await response.json();
-      const vec = new Float32Array(data.embedding);
-      return this.normalize(vec);
-    } catch (err) {
-      console.error('❌ Embedding API error:', err.message);
-      throw err;
-    }
-  }
 
   /**
    * Call backend /api/chat endpoint for secure LLM inference
@@ -256,44 +215,58 @@ export class RAGChatService {
     }
   }
 
-  async loadBinaryIndex() {
-    if (this.indexLoaded && this.indexMeta && this.vectors && this.textsBuffer) {
-      console.log('✓ Binary index already cached, reusing...');
-      return;
-    }
-
-    const loadStart = Date.now();
+  /**
+   * Call backend /api/retrieve endpoint for Pinecone vector search.
+   * Embedding + similarity search are handled server-side.
+   */
+  async retrieveFromServer(query, { repoFilter = null, topK = 8 } = {}) {
     try {
-      const metaResponse = await fetch('/rag/meta.json');
-      if (!metaResponse.ok) throw new Error('Failed to load /rag/meta.json');
-      this.indexMeta = await metaResponse.json();
-
-      const { count, dim, items } = this.indexMeta;
-      if (!count || !dim || !items || items.length !== count) {
-        throw new Error('Invalid meta.json');
+      const body = { query, topK };
+      if (repoFilter) {
+        body.filters = { repo: repoFilter };
       }
 
-      const vectorsResponse = await fetch('/rag/vectors.f32');
-      if (!vectorsResponse.ok) throw new Error('Failed to load /rag/vectors.f32');
-      const arrayBuffer = await vectorsResponse.arrayBuffer();
-      this.vectors = new Float32Array(arrayBuffer);
+      const response = await fetch(`${this.apiBaseUrl}/api/retrieve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
 
-      if (this.vectors.length !== count * dim) {
-        throw new Error(`Vector size mismatch: got ${this.vectors.length}, expected ${count * dim}`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Retrieval failed');
       }
 
-      const textsResponse = await fetch('/rag/texts.txt');
-      if (!textsResponse.ok) throw new Error('Failed to load /rag/texts.txt');
-      this.textsBuffer = new Uint8Array(await textsResponse.arrayBuffer());
-
-      this.indexLoaded = true;
-      const loadTime = Date.now() - loadStart;
-      console.log(`✓ Loaded binary index: ${count} items, dim=${dim}, in ${loadTime}ms`);
+      return response.json(); // { matches, count, model, query }
     } catch (err) {
-      console.error('Failed to load binary index:', err.message);
-      this.indexLoaded = false;
+      console.error('❌ Retrieval API error:', err.message);
       throw err;
     }
+  }
+
+  formatPineconeMatches(matches) {
+    const formatted = matches.map(match => {
+      const meta = match.metadata || {};
+      const projectName = meta.repo || 'Unknown';
+      const filePath = meta.file_path || 'N/A';
+      const startLine = meta.start_line;
+      const endLine = meta.end_line;
+
+      let sourceHeader = `[Source: ${projectName} | ${filePath}`;
+      if (startLine && endLine) {
+        sourceHeader += ` | L${startLine}–${endLine}`;
+      }
+      sourceHeader += ']';
+
+      const text = meta.text || '';
+      const maxLength = 1200;
+      const truncated = text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+
+      return `${sourceHeader}\n${truncated}`;
+    });
+
+    console.log('🧹 Formatted context chunks:', formatted.length);
+    return formatted.join('\n\n---\n\n');
   }
 
   normalizeText(text) {
@@ -310,10 +283,9 @@ export class RAGChatService {
     this.projectAliases = new Map();
 
     const repoSet = new Set();
-    if (this.indexMeta?.items) {
-      this.indexMeta.items.forEach(item => {
-        const repo = item.repo || item.project_name;
-        if (repo) repoSet.add(repo);
+    if (this.resumeData?.projects) {
+      this.resumeData.projects.forEach(proj => {
+        if (proj.repo_name) repoSet.add(proj.repo_name);
       });
     }
     this.repoNames = Array.from(repoSet);
@@ -375,90 +347,6 @@ export class RAGChatService {
       console.warn('⚠️ LLM project detection failed:', err.message);
       return null;
     }
-  }
-
-  normalize(vec) {
-    let norm = 0;
-    for (let i = 0; i < vec.length; i++) {
-      norm += vec[i] * vec[i];
-    }
-    norm = Math.sqrt(norm);
-    if (norm === 0) return vec;
-    const normalized = new Float32Array(vec.length);
-    for (let i = 0; i < vec.length; i++) {
-      normalized[i] = vec[i] / norm;
-    }
-    return normalized;
-  }
-
-  dotProduct(a, b) {
-    let sum = 0;
-    for (let i = 0; i < a.length; i++) {
-      sum += a[i] * b[i];
-    }
-    return sum;
-  }
-
-  getChunkText(itemIndex) {
-    const item = this.indexMeta.items[itemIndex];
-    if (!item) return '';
-    
-    const { text_offset, text_length } = item;
-    const slice = this.textsBuffer.slice(text_offset, text_offset + text_length);
-    return new TextDecoder('utf-8').decode(slice);
-  }
-
-  retrieveTopK(queryVector, { repoFilter = null, k = 10 } = {}) {
-    const { count, dim, items } = this.indexMeta;
-    const similarities = [];
-
-    for (let i = 0; i < count; i++) {
-      const itemRepo = items[i].repo || items[i].project_name;
-
-      if (repoFilter && itemRepo !== repoFilter) {
-        continue;
-      }
-
-      const vectorStart = i * dim;
-      let sim = 0;
-      for (let j = 0; j < dim; j++) {
-        sim += queryVector[j] * this.vectors[vectorStart + j];
-      }
-      
-      similarities.push({ index: i, similarity: sim });
-    }
-
-    similarities.sort((a, b) => b.similarity - a.similarity);
-    return similarities.slice(0, k);
-  }
-
-  formatChunks(chunkIndices) {
-    const formatted = [];
-
-    for (const idx of chunkIndices) {
-      const item = this.indexMeta.items[idx];
-      const projectName = item.repo || item.project_name || 'Unknown';
-      const filePath = item.file_path || 'N/A';
-      const startLine = item.start_line;
-      const endLine = item.end_line;
-
-      let sourceHeader = `[Source: ${projectName} | ${filePath}`;
-      if (startLine && endLine) {
-        sourceHeader += ` | L${startLine}–${endLine}`;
-      }
-      sourceHeader += ']';
-
-      const chunkText = this.getChunkText(idx);
-      const maxLength = 1200;
-      const truncated = chunkText.length > maxLength
-        ? chunkText.substring(0, maxLength) + '...'
-        : chunkText;
-
-      formatted.push(`${sourceHeader}\n${truncated}`);
-    }
-    
-    console.log('🧹 Formatted context chunks:', formatted.length);
-    return formatted.join('\n\n---\n\n');
   }
 
   buildSystemPrompt(retrievedContext) {
@@ -628,7 +516,7 @@ export class RAGChatService {
   }
 
   async query(userMessage, history = []) {
-    if (!this.initialized || !this.indexLoaded) {
+    if (!this.initialized) {
       console.warn('⚠️ RAG not ready; using fallback');
       return this.queryFallback(userMessage, history);
     }
@@ -647,22 +535,21 @@ export class RAGChatService {
       console.log('📦 Detected project:', targetRepo || 'none');
       console.log('🔍 Retrieval mode:', targetRepo ? `scoped (repo: ${targetRepo})` : 'broad');
 
-      const queryVector = await this.embedQuery(userMessage);
-      const topKResults = this.retrieveTopK(queryVector, {
+      const retrievalResult = await this.retrieveFromServer(userMessage, {
         repoFilter: targetRepo,
-        k: 10
+        topK: targetRepo ? 8 : 10
       });
+      const matches = retrievalResult.matches || [];
       
-      console.log('📊 Raw retrieval hits:', topKResults.length);
+      console.log('📊 Raw retrieval hits:', matches.length);
 
       let formattedContext = '';
       let sourceDocuments = [];
-      if (topKResults.length > 0) {
-        const topKIndices = topKResults.map(r => r.index);
-        formattedContext = this.formatChunks(topKIndices);
-        sourceDocuments = topKIndices.map(idx => ({
-          pageContent: this.getChunkText(idx),
-          metadata: this.indexMeta.items[idx]
+      if (matches.length > 0) {
+        formattedContext = this.formatPineconeMatches(matches);
+        sourceDocuments = matches.map(m => ({
+          pageContent: m.metadata?.text || '',
+          metadata: m.metadata || {}
         }));
       }
 
@@ -680,7 +567,7 @@ export class RAGChatService {
       ]);
 
       const queryTime = Date.now() - queryStart;
-      console.log(`✓ Query completed in ${queryTime}ms, retrieved ${topKResults.length} chunks, agentic iterations: ${agenticResult.iterations}`);
+      console.log(`✓ Query completed in ${queryTime}ms, retrieved ${matches.length} chunks, agentic iterations: ${agenticResult.iterations}`);
 
       const responseText = this.normalizeEmails(agenticResult.text);
 
@@ -810,14 +697,13 @@ export class RAGChatService {
   }
 
   isReady() {
-    return this.initialized && this.indexLoaded;
+    return this.initialized;
   }
 
   getStatus() {
     return {
       initialized: this.initialized,
       ready: this.isReady(),
-      indexLoaded: this.indexLoaded,
       proxyMode: true
     };
   }
